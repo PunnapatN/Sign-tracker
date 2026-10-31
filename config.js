@@ -8,7 +8,7 @@ window.APP_CONFIG = {
   projectId: "lotus-sign-tracker",
   storageBucket: "lotus-sign-tracker.firebasestorage.app",
   messagingSenderId: "159069199677",
-  appId: "1:159069199677:web:257e4fe2d5e0de167cf954
+  appId: "1:159069199677:web:257e4fe2d5e0de167cf954"
   },
   superAdmins: ["ppunnapatt@gmail.com"],
   appName: "ตรวจป้าย Lotus's"
