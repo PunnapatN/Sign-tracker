@@ -206,7 +206,20 @@ button.ghost{border-color:transparent;background:transparent;color:var(--lotus-d
 <script>
 "use strict";
 /* ================= ค่าคงที่ ================= */
-const VERSION = "1.2.0";
+const VERSION = "1.2.1";
+/* ===== ตรวจปัญหาการเริ่มระบบ: แสดงสาเหตุบนหน้าจอแทนการค้างที่ "กำลังโหลด" ===== */
+let BOOTED=false, BOOTMSG=false;
+function bootError(title, detail){
+  const a=document.getElementById("app"); if(!a||BOOTMSG) return; BOOTMSG=true;
+  a.innerHTML=`<div class="card" style="max-width:640px;margin:30px auto;border-left:5px solid #D7262E"><h2 style="margin-top:0">${title}</h2><p>${detail}</p>
+  <p class="muted">ส่งภาพหน้าจอนี้ให้ผู้ดูแลระบบ · v${typeof VERSION!=="undefined"?VERSION:""}</p><button onclick="location.reload()">โหลดใหม่</button></div>`;
+}
+window.addEventListener("error",e=>{ if(!BOOTED) bootError("ระบบเริ่มทำงานไม่สำเร็จ", String(e.message||e.error||"").replace(/</g,"&lt;")); });
+window.addEventListener("unhandledrejection",e=>{ if(!BOOTED) bootError("ระบบเริ่มทำงานไม่สำเร็จ", String((e.reason&&e.reason.message)||e.reason||"").replace(/</g,"&lt;")); });
+setTimeout(()=>{ if(!BOOTED) bootError("โหลดนานผิดปกติ (เกิน 20 วินาที)","ตรวจ: 1) ค่าใน config.js ตรงกับ Firebase  2) สร้าง Firestore Database ชื่อ (default) แล้ว  3) อินเทอร์เน็ตไม่ได้บล็อก googleapis.com  4) กด Cmd+Shift+R เพื่อล้างแคช"); },20000);
+if(typeof firebase==="undefined"){ bootError("โหลดไลบรารี Firebase ไม่ได้","อินเทอร์เน็ตหรือเครือข่ายบริษัทอาจบล็อก gstatic.com ลองใช้เน็ตมือถือ"); throw new Error("no firebase"); }
+if(!window.APP_CONFIG||!window.APP_CONFIG.firebase){ bootError("ไม่พบไฟล์ config.js หรือไฟล์มีข้อผิดพลาด","ตรวจว่าอัปโหลด config.js ไว้โฟลเดอร์เดียวกับ index.html และเครื่องหมายคำพูดเป็น \" ตรง ๆ ไม่ใช่ “ ” และมีจุลภาคครบทุกบรรทัด"); throw new Error("no config"); }
+if(JSON.stringify(window.APP_CONFIG.firebase).includes("ใส่ค่า")){ bootError("ยังไม่ได้ใส่ค่า Firebase ใน config.js","คัดลอกค่า firebaseConfig จาก Firebase > Project settings > Your apps มาแทนคำว่า “ใส่ค่า” ให้ครบทุกบรรทัด"); throw new Error("config placeholder"); }
 const C = window.APP_CONFIG;
 firebase.initializeApp(C.firebase);
 const auth = firebase.auth(), db = firebase.firestore();
@@ -987,7 +1000,7 @@ async function importExcel(file, zid, out){
 
 /* ================= เข้าสู่ระบบ ================= */
 function viewLogin(msg){
-  $("#hdr").hidden=true;
+  BOOTED=true; $("#hdr").hidden=true;
   const tiles=["ok","fill","ok","bad","empty","ok","ok","warn","ok"].map(c=>`<div class="tile c-${c}${c==="empty"?" empty":""}" style="min-width:46px;min-height:30px"></div>`).join("");
   $("#app").style.padding="0"; $("#app").style.maxWidth="none";
   $("#app").innerHTML=`<div class="login-wrap"><div class="login-top"><div class="pylon" aria-hidden="true"><div class="pgrid" style="grid-template-columns:repeat(3,46px)">${tiles}</div></div><div class="legs" style="width:120px" aria-hidden="true"><i></i><i></i></div>
@@ -1011,10 +1024,13 @@ auth.onAuthStateChanged(async u=>{
     $("#hdr").hidden=false; $("#app").style.padding=""; $("#app").style.maxWidth=""; $("#appname").textContent=C.appName||"ตรวจป้าย";
     $("#who").textContent=`${S.me.name||email} · ${ROLE_TH[S.me.role]||""}${S.me.zoneId?" · "+S.me.zoneId:S.me.rmId?" · "+S.me.rmId:""}`;
     $("#app").innerHTML='<div class="empty-state">กำลังโหลดข้อมูล…</div>';
-    await loadAll();
+    await loadAll(); BOOTED=true;
     if((S.me.role==="branch"||S.me.role==="manager")&&S.me.branches.length===1&&!location.hash.replace(/^#\/?/,"")) return go("branch/"+S.me.branches[0]);
     render();
-  }catch(e){ console.error(e); viewLogin(`โหลดข้อมูลไม่สำเร็จ: ${esc(e.message)}`); }
+  }catch(e){ console.error(e); const m=String(e.message||e);
+    const hint=/permission|insufficient/i.test(m)?"สิทธิ์ไม่ผ่าน: ตรวจว่า Gmail ใน firestore.rules และ config.js (superAdmins) ตรงกับ Gmail ที่ล็อกอิน และกด Publish Rules แล้ว"
+      :/offline|unavailable|failed to get/i.test(m)?"เชื่อมต่อฐานข้อมูลไม่ได้: ตรวจว่าสร้าง Firestore Database แล้ว และชื่อฐานข้อมูลเป็น (default)":"";
+    viewLogin(`โหลดข้อมูลไม่สำเร็จ: ${esc(m)}${hint?`<p><b>${hint}</b></p>`:""}<div style="margin-top:8px"><button onclick="auth.signOut()">ออกจากระบบ</button></div>`); }
 });
 </script>
 </body>
