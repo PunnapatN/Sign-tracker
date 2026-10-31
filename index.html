@@ -1,0 +1,1021 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ตรวจป้าย</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+@font-face{font-family:"Lotuss Smart HL";font-weight:300;font-display:swap;src:url(fonts/LotussSmartHL-Light.woff2) format("woff2"),url(fonts/LotussSmartHL-Light.ttf) format("truetype"),url(fonts/LotussSmartHL-Light.otf) format("opentype")}
+@font-face{font-family:"Lotuss Smart HL";font-weight:400;font-display:swap;src:url(fonts/LotussSmartHL-Regular.woff2) format("woff2"),url(fonts/LotussSmartHL-Regular.ttf) format("truetype"),url(fonts/LotussSmartHL-Regular.otf) format("opentype")}
+@font-face{font-family:"Lotuss Smart HL";font-weight:500;font-display:swap;src:url(fonts/LotussSmartHL-Medium.woff2) format("woff2"),url(fonts/LotussSmartHL-Medium.ttf) format("truetype"),url(fonts/LotussSmartHL-Medium.otf) format("opentype")}
+@font-face{font-family:"Lotuss Smart HL";font-weight:700;font-display:swap;src:url(fonts/LotussSmartHL-Bold.woff2) format("woff2"),url(fonts/LotussSmartHL-Bold.ttf) format("truetype"),url(fonts/LotussSmartHL-Bold.otf) format("opentype")}
+@font-face{font-family:"Lotuss Smart HL";font-weight:800;font-display:swap;src:url(fonts/LotussSmartHL-ExtraBold.woff2) format("woff2"),url(fonts/LotussSmartHL-ExtraBold.ttf) format("truetype"),url(fonts/LotussSmartHL-ExtraBold.otf) format("opentype")}
+:root{
+  /* ธีมแบรนด์: เขียว Lotus's + แดง Makro (ค่าสีประมาณ เปลี่ยนเป็นรหัสสีทางการได้ที่นี่) */
+  --lotus:#00A39A; --lotus-d:#007A72; --lotus-dd:#00463F; --lotus-l:#E2F5F3;
+  --makro:#D7262E; --makro-d:#A81920; --makro-l:#FDE8E9;
+  --ink:#152320; --ink2:#4A5E5A; --muted:#7D8F8B; --paper:#F4F7F6; --card:#fff; --line:#DCE5E3;
+  --pylon:#1C2725;
+  --ok:#0E6B3A; --ok-bg:#D9F2E3; --warn:#7A4D00; --warn-bg:#FFEDB8; --bad:#B0161E; --bad-bg:#FCDDDE;
+  --fill:#1D4EA8; --fill-bg:#DCE7FF; --none:#5D6B68; --none-bg:#E5EBE9;
+  --r:14px; --font:"Lotuss Smart HL","IBM Plex Sans Thai",Tahoma,sans-serif;
+}
+*{box-sizing:border-box}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html,body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:1.5px solid var(--line);background:#fff;border-radius:12px;padding:9px 16px;min-height:44px;font-weight:500;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+button:hover{border-color:#b9c9c6}
+button.pri{background:var(--lotus);border-color:var(--lotus);color:#fff}
+button.pri:hover{background:var(--lotus-d);border-color:var(--lotus-d)}
+button.dan{color:var(--makro);border-color:#f2b8bb}
+button:disabled{opacity:.45;cursor:default}
+button svg{width:18px;height:18px;flex:none}
+:focus-visible{outline:3px solid var(--lotus);outline-offset:2px}
+input,select,textarea{border:1.5px solid var(--line);border-radius:12px;padding:9px 12px;background:#fff;width:100%;min-height:44px}
+input:focus,select:focus{border-color:var(--lotus);outline:none}
+label{display:block;font-size:14px;color:var(--ink2);margin:12px 0 4px;font-weight:500}
+a{color:var(--lotus-d);font-weight:500}
+/* แถบบน */
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--lotus-dd);color:#fff;border-bottom:4px solid var(--makro)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--lotus-dd);z-index:30}
+.hbar{display:flex;align-items:center;gap:12px;padding:10px 16px;max-width:1120px;margin:0 auto}
+.brand{display:flex;align-items:center;gap:10px;flex:1;min-width:0}
+.brand b{font-weight:800;font-size:20px;letter-spacing:.2px;white-space:nowrap}
+.mark{display:grid;grid-template-columns:repeat(2,9px);gap:2px;padding:4px;background:var(--pylon);border-radius:4px}
+.mark i{height:7px;border-radius:1px;background:var(--lotus)}.mark i:nth-child(2){background:#fff}.mark i:nth-child(3){background:var(--makro)}
+.who{font-size:13px;opacity:.85;text-align:right;line-height:1.25;max-width:45vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.iconbtn{background:transparent;border:1.5px solid rgba(255,255,255,.3);color:#fff;min-height:38px;padding:6px 10px}
+.iconbtn:hover{border-color:#fff}
+/* เมนู: บนจอใหญ่เป็นแถบ บนมือถือเป็นแถบล่าง */
+nav{display:flex;gap:4px;max-width:1120px;margin:0 auto;padding:0 12px 10px}
+nav a{display:flex;align-items:center;gap:6px;color:#bfe3df;text-decoration:none;padding:7px 14px;border-radius:999px;font-weight:500;position:relative}
+nav a svg{width:20px;height:20px}
+nav a.on{background:#fff;color:var(--lotus-dd)}
+nav .n{background:var(--makro);color:#fff;border-radius:999px;padding:0 6px;font-size:12px;font-weight:700;min-width:20px;text-align:center;line-height:18px}
+@media(max-width:720px){
+  nav{position:fixed;left:0;right:0;bottom:0;z-index:20;background:#fff;border-top:1px solid var(--line);padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));justify-content:space-around;max-width:none}
+  nav a{flex-direction:column;gap:2px;font-size:12px;color:var(--ink2);padding:6px 4px;border-radius:12px;flex:1;max-width:100px}
+  nav a.on{background:var(--lotus-l);color:var(--lotus-dd)}
+  nav .n{position:absolute;top:2px;right:calc(50% - 22px)}
+  main{padding-bottom:96px!important}
+  .who{display:none}
+}
+main{max-width:1120px;margin:0 auto;padding:18px 16px 40px}
+h1{font-size:26px;font-weight:800;margin:4px 0 14px;line-height:1.2}
+h2{font-size:19px;font-weight:700;margin:26px 0 10px}
+.crumb{font-size:14px;display:inline-flex;align-items:center;gap:4px;margin-bottom:4px;text-decoration:none}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:12px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.grow{flex:1}
+.muted{color:var(--muted);font-size:14px}
+.red{color:var(--bad);font-weight:700}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+/* ภาพรวม: แถบสุขภาพป้าย */
+.hero{background:var(--lotus-dd);color:#fff;border-radius:18px;padding:18px 18px 16px;margin-bottom:14px}
+.hero .t{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.hero .t b{font-size:15px;font-weight:500;opacity:.85}
+.hero .t span{font-size:14px;opacity:.75}
+.hero .big{font-size:40px;font-weight:800;line-height:1.1;margin:6px 0 12px}
+.hero .big small{font-size:16px;font-weight:400;opacity:.8;margin-left:6px}
+.health{display:flex;height:14px;border-radius:999px;overflow:hidden;background:#2a3b38;gap:2px}
+.health i{display:block;height:100%;min-width:3px}
+.hero .health{height:20px;background:rgba(255,255,255,.12)}
+.bcard .health,.card .health{background:var(--line)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px;font-size:13px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:10px;height:10px;border-radius:3px;display:inline-block}
+.h-ok{background:#2BB673}.h-warn{background:#F5B82E}.h-bad{background:var(--makro)}.h-empty{background:#fff;box-shadow:inset 0 0 0 1px #9aa}.h-fill{background:#5B8DEF}.h-none{background:#8C9A97}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+.kpi{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;border-left:5px solid var(--line)}
+.kpi span{display:block;font-size:13px;color:var(--ink2)}
+.kpi b{font-size:28px;font-weight:800;line-height:1.2}
+.kpi.alert{border-left-color:var(--makro)}.kpi.alert b{color:var(--makro)}
+.kpi.good{border-left-color:var(--lotus)}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.toolbar input[type=search]{max-width:260px}
+.toolbar select{max-width:240px}
+/* การ์ดสาขา */
+.blist{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.bcard{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:14px;cursor:pointer;text-align:left;width:100%;display:block;min-height:0;font-weight:400}
+.bcard:hover{border-color:var(--lotus)}
+.bcard .top{display:flex;align-items:flex-start;gap:8px;margin-bottom:10px}
+.bcard .code{font-size:13px;color:var(--muted)}
+.bcard .name{font-size:18px;font-weight:700;line-height:1.25}
+.bcard .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:10px;text-align:center}
+.bcard .stats div{background:var(--paper);border-radius:10px;padding:6px 2px}
+.bcard .stats b{display:block;font-size:18px;font-weight:800}
+.bcard .stats span{font-size:12px;color:var(--ink2)}
+.bcard .stats .hot b{color:var(--makro)}
+.prog{height:6px;border-radius:999px;background:var(--line);overflow:hidden;margin-top:10px}.prog i{display:block;height:100%;background:var(--lotus)}
+.fmt{font-size:12px;font-weight:700;border-radius:6px;padding:2px 8px;white-space:nowrap}
+.fmt-lotus{background:var(--lotus-l);color:var(--lotus-d)}.fmt-makro{background:var(--makro-l);color:var(--makro-d)}.fmt-talad{background:#FFF3D6;color:#7A4D00}
+.tbl{width:100%;border-collapse:collapse;font-size:15px}
+.tbl th{text-align:left;font-weight:500;color:var(--ink2);font-size:13px;border-bottom:1px solid var(--line);padding:8px 6px}
+.tbl td{border-bottom:1px solid #EDF2F1;padding:10px 6px;vertical-align:top}
+.scroll{overflow-x:auto}
+.chip{display:inline-block;border-radius:8px;padding:2px 9px;font-size:13px;font-weight:500;white-space:nowrap}
+.c-ok{background:var(--ok-bg);color:var(--ok)}.c-warn{background:var(--warn-bg);color:var(--warn)}
+.c-bad{background:var(--bad-bg);color:var(--bad)}.c-fill{background:var(--fill-bg);color:var(--fill)}
+.c-none{background:var(--none-bg);color:var(--none)}.c-empty{background:#fff;color:var(--ink);border:1.5px dashed var(--ink2)}
+/* ผังป้าย */
+.pylon{display:inline-block;background:var(--pylon);border-radius:10px 10px 3px 3px;padding:10px;max-width:100%;border-top:6px solid var(--lotus)}
+.pylon .head{color:#A7DCD6;font-size:13px;padding:0 2px 8px;display:flex;justify-content:space-between;gap:10px;font-weight:500}
+.pgrid{display:grid;gap:5px}
+.tile{min-width:78px;min-height:52px;border-radius:5px;padding:5px 7px;font-size:12px;line-height:1.3;border:0;text-align:left;display:flex;flex-direction:column;justify-content:space-between;align-items:stretch;overflow:hidden;font-weight:500}
+.tile b{font-weight:800;font-size:11px;opacity:.7}
+.tile.empty{background:#fff;color:#556;box-shadow:0 0 0 1px #fff,0 0 14px 3px rgba(255,255,255,.5)}
+.tile.cur{outline:3px solid #FFD54A;outline-offset:2px}
+.tile.skip{background:transparent;border:1px dashed #45524F}
+.legs{display:flex;justify-content:space-around;height:18px}.legs i{width:14px;background:var(--pylon)}
+.pt{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:start}
+@media(max-width:640px){.pt{grid-template-columns:1fr}}
+.pinfo b{font-size:18px;font-weight:700}
+.status-line{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+.step{font-size:14px;color:var(--lotus-d);font-weight:700}
+.stepbar{display:flex;gap:4px;margin:6px 0 12px}.stepbar i{flex:1;height:5px;border-radius:999px;background:var(--line)}.stepbar i.on{background:var(--lotus)}
+/* ส่วนประกอบอื่น */
+.toast{position:fixed;left:50%;bottom:calc(90px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 18px;border-radius:12px;z-index:60;max-width:90vw;font-weight:500}
+.modal{position:fixed;inset:0;background:rgba(8,26,23,.55);z-index:50;display:flex;align-items:flex-end;justify-content:center;padding:0}
+.modal .box{background:#fff;border-radius:20px 20px 0 0;max-width:640px;width:100%;max-height:92vh;overflow:auto;padding:20px 18px calc(20px + env(safe-area-inset-bottom,0px))}
+@media(min-width:721px){.modal{align-items:center;padding:16px}.modal .box{border-radius:20px}}
+.modal.full{padding:0;background:#000;align-items:stretch}
+.cam{position:relative;width:100vw;height:100vh;height:100dvh;display:flex;flex-direction:column}
+.cam video{flex:1;width:100%;object-fit:contain;background:#000;min-height:0}
+.cam-label{position:absolute;top:calc(12px + env(safe-area-inset-top,0px));left:12px;right:12px;color:#fff;background:rgba(0,70,63,.8);padding:8px 12px;border-radius:12px;font-size:15px;font-weight:500;border-left:4px solid var(--makro)}
+.cam-frame{position:absolute;inset:18% 8% 26%;border:2px dashed rgba(255,255,255,.55);border-radius:12px;pointer-events:none}
+.cam-bar{display:flex;align-items:center;justify-content:space-between;padding:16px 22px calc(16px + env(safe-area-inset-bottom,0px));background:#000}
+.cam-bar button{background:transparent;color:#fff;border-color:#555}
+.shutter{width:74px;height:74px;border-radius:50%!important;background:#fff!important;border:6px solid var(--lotus)!important;padding:0}
+.thumbs{display:flex;gap:10px;flex-wrap:wrap}
+.thumbs figure{margin:0;font-size:13px;color:var(--ink2)}
+.thumbs img{width:156px;height:116px;object-fit:cover;border-radius:10px;background:#eee;display:block;margin-bottom:4px}
+.empty-state{text-align:center;padding:34px 12px;color:var(--ink2)}
+.check{display:flex;gap:8px;align-items:center;font-size:15px;margin:6px 14px 6px 0;font-weight:400;color:var(--ink)}
+.check input{width:20px;height:20px;min-height:0;accent-color:var(--lotus)}
+details summary{cursor:pointer}
+/* ตัวกรอง + ผู้ใช้ */
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+.filters select{flex:1;min-width:150px;max-width:280px}
+button.ghost{border-color:transparent;background:transparent;color:var(--lotus-d)}
+.rolebar{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:12px}
+.rolepill{border-radius:999px;min-height:38px;padding:6px 14px;white-space:nowrap;font-weight:500}
+.rolepill b{font-weight:800;margin-left:2px}
+.rolepill.on{background:var(--lotus-dd);border-color:var(--lotus-dd);color:#fff}
+.rdot{width:10px;height:10px;border-radius:50%;display:inline-block}
+.ulist{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:10px;margin-bottom:8px}
+@media(max-width:420px){.ulist{grid-template-columns:1fr}}
+.ucard{display:flex;gap:12px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:12px 14px}
+.ucard.off{opacity:.6}
+.av{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;flex:none;font-size:18px}
+.ell{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rchip{display:inline-block;border-radius:999px;padding:1px 10px;font-size:12px;font-weight:700;white-space:nowrap}
+.rs{background:var(--makro);color:#fff}.rv{background:#3D4A7A;color:#fff}.rr{background:var(--lotus-dd);color:#fff}.ra{background:var(--lotus);color:#fff}.rmg{background:#F5B82E;color:#3b2800}.rb{background:var(--none-bg);color:var(--none)}
+.rdot.rb{background:#8C9A97}
+.perm td,.perm th{text-align:center;font-size:13px}.perm td:first-child{text-align:left;font-size:14px;min-width:170px}
+.perm td.yes{color:var(--ok);font-weight:500}.perm td.no{color:#b8c4c1}
+.roles{display:grid;gap:6px}
+.ropt{display:flex;gap:10px;align-items:flex-start;border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;margin:0;cursor:pointer;color:var(--ink)}
+.ropt input{width:20px;height:20px;min-height:0;margin-top:2px;accent-color:var(--lotus)}
+.ropt span{display:flex;flex-direction:column}.ropt small{color:var(--muted);font-weight:400;font-size:13px}
+.ropt:has(input:checked){border-color:var(--lotus);background:var(--lotus-l)}
+/* หน้าเข้าสู่ระบบ */
+.login-wrap{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;background:var(--lotus-dd)}
+.login-top{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px 20px;color:#fff;text-align:center}
+.login-top h1{font-size:34px;color:#fff;margin:18px 0 6px}
+.login-top p{opacity:.85;margin:0}
+.login-card{background:#fff;border-radius:24px 24px 0 0;padding:24px 20px calc(28px + env(safe-area-inset-bottom,0px));max-width:480px;width:100%;margin:0 auto;border-top:5px solid var(--makro)}
+.brands{display:flex;justify-content:center;gap:8px;margin-top:14px}
+@media(prefers-reduced-motion:no-preference){.tile,.bcard{transition:transform .12s,border-color .12s}.tile:active,.bcard:active{transform:scale(.98)}}
+</style>
+</head>
+<body>
+<header id="hdr" hidden>
+  <div class="hbar"><div class="brand"><span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><b id="appname">ตรวจป้าย</b></div><div class="who" id="who"></div><button id="logout" class="iconbtn" aria-label="ออกจากระบบ"></button></div>
+  <nav id="nav" aria-label="เมนูหลัก"></nav>
+</header>
+<main id="app"><div class="empty-state">กำลังโหลด…</div></main>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="config.js"></script>
+<script>
+"use strict";
+/* ================= ค่าคงที่ ================= */
+const VERSION = "1.2.0";
+const C = window.APP_CONFIG;
+firebase.initializeApp(C.firebase);
+const auth = firebase.auth(), db = firebase.firestore();
+const FV = firebase.firestore.FieldValue, TSx = firebase.firestore.Timestamp;
+const TYPES = [
+  {code:"PY", n:1, name:"Pylon", sided:true, legs:true},
+  {code:"TT", n:2, name:"Totem", sided:true, legs:true},
+  {code:"BT", n:3, name:"Building (Tenant)", sided:true},
+  {code:"BN", n:4, name:"Building (Banner)", sided:true, banner:true},
+  {code:"EN", n:5, name:"Tenant Logo ทางเข้า", sided:true},
+  {code:"PL", n:6, name:"ป้ายไฟวงกลมเสาไฟ", sided:false}
+];
+const TYPE = Object.fromEntries(TYPES.map(t=>[t.code,t]));
+const SIDES = ["A","B","C","D","D1","D2","D3","D4","D5","D6","-"];
+const CONTRACT = ["มีสัญญา-มีค่าเช่า","มีสัญญา-0 บาท","ไม่มีสัญญา-ติดฟรี (ทดแทน)","ไม่ทราบสถานะ-รอตรวจสอบ","ว่าง"];
+const COND = ["ปกติ","ซีดจาง","หลุด/ขาด","ไฟดับทั้งป้าย","ไฟดับบางส่วน","ป้ายร้านเก่า (ร้านออกแล้ว)","ป้ายไม่ตรงทะเบียน","ว่าง (ขาวโล่ง)","ป้ายทดแทน","ยังไม่ตรวจ"];
+const COND_CLS = {"ปกติ":"ok","ซีดจาง":"warn","ไฟดับบางส่วน":"warn","ป้ายไม่ตรงทะเบียน":"warn","หลุด/ขาด":"bad","ไฟดับทั้งป้าย":"bad","ป้ายร้านเก่า (ร้านออกแล้ว)":"bad","ว่าง (ขาวโล่ง)":"empty","ป้ายทดแทน":"fill","ยังไม่ตรวจ":"none"};
+const NO_TICKET = ["ปกติ","ป้ายทดแทน","ยังไม่ตรวจ"];
+const DEFAULT_SETTINGS = {
+  sla:{"หลุด/ขาด":1,"ไฟดับทั้งป้าย":3,"ว่าง (ขาวโล่ง)":3,"ป้ายร้านเก่า (ร้านออกแล้ว)":7,"ไฟดับบางส่วน":7,"ป้ายไม่ตรงทะเบียน":7,"ซีดจาง":30},
+  dayStart:8, dayEnd:17, nightStart:19, nightEnd:24, enforceTime:true, aiThreshold:0.7, gpsRadiusM:1500
+};
+const ROLE_TH = {super:"Super Admin", viewer:"ผู้บริหาร", rm:"RM", am:"AM", manager:"ผู้จัดการศูนย์", branch:"พนักงานสาขา"};
+const ROLE_ORDER = ["super","viewer","rm","am","manager","branch"];
+
+const IC = {
+  home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>',
+  check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg>',
+  tool:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h3"/></svg>',
+  gear:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+  cam:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>',
+  plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
+  users:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="17" cy="9" r="2.6"/><path d="M16 14.2A5 5 0 0 1 21.5 19"/></svg>',
+  out:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>',
+  down:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>',
+  back:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>'
+};
+const HKEYS=[["ok","ปกติ"],["warn","ต้องดูแล"],["bad","เสียหาย/ไฟดับ"],["empty","ว่าง"],["fill","ป้ายทดแทน"],["none","ยังไม่ตรวจ"]];
+function healthCounts(slots){ const c={ok:0,warn:0,bad:0,empty:0,fill:0,none:0}; slots.forEach(s=>c[COND_CLS[s.condition||"ยังไม่ตรวจ"]||"none"]++); return c; }
+function healthBar(slots){ const c=healthCounts(slots), n=slots.length||1; if(!slots.length) return '<div class="health" aria-label="ยังไม่มีช่องป้าย"></div>';
+  return `<div class="health" role="img" aria-label="${HKEYS.map(([k,t])=>t+" "+c[k]).join(", ")}">${HKEYS.filter(([k])=>c[k]).map(([k,t])=>`<i class="h-${k}" style="flex:${c[k]/n}" title="${t} ${c[k]}"></i>`).join("")}</div>`; }
+function legendHTML(slots){ const c=healthCounts(slots); return `<div class="legend">${HKEYS.map(([k,t])=>`<span><i class="h-${k}"></i>${t} ${c[k]}</span>`).join("")}</div>`; }
+function fmtBadge(f){ const k=f==="Makro"?"makro":f==="Talad Super"?"talad":"lotus"; return `<span class="fmt fmt-${k}">${esc(f||"Lotus's")}</span>`; }
+const crumb=(href,t)=>`<a class="crumb" href="${href}">${IC.back}${esc(t)}</a>`;
+
+/* ================= สถานะ ================= */
+const S = {user:null, me:null, settings:{...DEFAULT_SETTINGS}, rms:{}, zones:{}, branches:{}, points:{}, slots:{}, tickets:{}, reviews:{}, privCache:{}, f:{rm:"",zone:"",branch:""}, uf:{role:"",q:"",status:"active"}};
+const role = () => S.me && S.me.role;
+const isSuper = () => role()==="super", isViewer = () => role()==="viewer", isAM = () => role()==="am", isRM = () => role()==="rm", isMgr = () => role()==="manager";
+const wide = () => isSuper() || isViewer();
+const myZones = () => wide() ? Object.keys(S.zones) : isRM() ? (S.me.zones||[]) : (S.me.zoneId ? [S.me.zoneId] : []);
+const canEditZone = z => isSuper() || (isAM() && S.me.zoneId===z);
+const myBranch = b => { const br=S.branches[b]; return !!br && (isMgr()||role()==="branch") && S.me.zoneId===br.zoneId && (S.me.branches||[]).includes(b); };
+const canShootBranch = b => { const br=S.branches[b]; if(!br) return false; return canEditZone(br.zoneId) || myBranch(b); };
+const canReview = o => canEditZone(o.zoneId) || (isMgr() && myBranch(o.branch));
+const canReviewAny = () => isSuper() || isAM() || isMgr();
+const canManageUsers = () => isSuper() || isAM();
+
+/* ================= ตัวช่วย ================= */
+const $ = (s,el=document) => el.querySelector(s);
+const $$ = (s,el=document) => [...el.querySelectorAll(s)];
+const esc = v => String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt = n => (n==null||n==="")?"":Number(n).toLocaleString("th-TH");
+const monthKey = (d=new Date()) => { const t=new Date(d.getTime()+7*3600e3); return t.toISOString().slice(0,7); };
+const bkkHour = (d=new Date()) => { const t=new Date(d.getTime()+7*3600e3); return t.getUTCHours()+t.getUTCMinutes()/60; };
+const toDate = v => v ? (v.toDate ? v.toDate() : new Date(v)) : null;
+const dTH = v => { const d=toDate(v); return d ? d.toLocaleDateString("th-TH",{day:"numeric",month:"short",year:"2-digit"}) : "-"; };
+const typeOf = p => TYPE[p.typeCode] || {name:p.typeCode};
+const chip = c => `<span class="chip c-${COND_CLS[c]||"none"}">${esc(c||"ยังไม่ตรวจ")}</span>`;
+function toast(msg, ms=2600){ const t=document.createElement("div"); t.className="toast"; t.setAttribute("role","status"); t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),ms); }
+function modal(html, opt={}){ const m=document.createElement("div"); m.className="modal"+(opt.full?" full":""); m.innerHTML=opt.full?html:`<div class="box">${html}</div>`; document.body.appendChild(m); return {el:m, close:()=>m.remove()}; }
+function confirmBox(msg){ return new Promise(r=>{ const m=modal(`<p>${esc(msg)}</p><div class="row" style="justify-content:flex-end"><button data-n>ยกเลิก</button><button class="pri" data-y>ยืนยัน</button></div>`); $("[data-n]",m.el).onclick=()=>{m.close();r(false)}; $("[data-y]",m.el).onclick=()=>{m.close();r(true)}; }); }
+function pointIdOf(branch, typeCode, structNo, side){ return `${branch}-${typeCode}${structNo}${(!side||side==="-")?"":"-"+side}`; }
+const slotIdOf = (pointId, no) => `${pointId}-${String(no).padStart(2,"0")}`;
+function addDays(d, n){ return new Date(d.getTime()+n*86400e3); }
+async function commitOps(ops){ for(let i=0;i<ops.length;i+=400){ const b=db.batch(); ops.slice(i,i+400).forEach(([ref,data,mode])=>{ if(mode==="update") b.update(ref,data); else b.set(ref,data,{merge:mode==="merge"}); }); await b.commit(); } }
+function busy(btn, on, txt){ if(!btn) return; if(on){ btn.dataset.t=btn.textContent; btn.textContent=txt||"กำลังทำงาน…"; btn.disabled=true; } else { btn.textContent=btn.dataset.t||btn.textContent; btn.disabled=false; } }
+function haversine(a,b,c,d){ const R=6371000, r=x=>x*Math.PI/180; const x=Math.sin(r(c-a)/2)**2+Math.cos(r(a))*Math.cos(r(c))*Math.sin(r(d-b)/2)**2; return 2*R*Math.asin(Math.sqrt(x)); }
+
+/* ================= กล้อง (ถ่ายสดเท่านั้น) ================= */
+function getGPS(){ return new Promise(res=>{ if(!navigator.geolocation) return res(null); navigator.geolocation.getCurrentPosition(p=>res({lat:+p.coords.latitude.toFixed(6),lng:+p.coords.longitude.toFixed(6),acc:Math.round(p.coords.accuracy)}),()=>res(null),{enableHighAccuracy:true,timeout:8000,maximumAge:60000}); }); }
+function snap(video, maxSide, q, stamp){
+  const w=video.videoWidth, h=video.videoHeight, k=Math.min(1,maxSide/Math.max(w,h));
+  const c=document.createElement("canvas"); c.width=Math.round(w*k); c.height=Math.round(h*k);
+  const x=c.getContext("2d"); x.drawImage(video,0,0,c.width,c.height);
+  if(stamp){ const fs=Math.max(14,Math.round(c.width/55)); x.fillStyle="rgba(0,0,0,.6)"; x.fillRect(0,c.height-fs*2.2,c.width,fs*2.2); x.fillStyle="#fff"; x.font=`${fs}px Tahoma,sans-serif`; x.fillText(stamp,fs*.6,c.height-fs*.75); }
+  return c.toDataURL("image/jpeg",q);
+}
+function takePhoto(label){
+  return new Promise(async (resolve,reject)=>{
+    const m=modal(`<div class="cam"><video playsinline autoplay muted></video><div class="cam-frame" aria-hidden="true"></div><div class="cam-label">${esc(label)}</div><div class="cam-bar"><button data-x>ยกเลิก</button><button class="shutter" data-shot aria-label="ถ่ายภาพ"></button><span style="width:72px"></span></div></div>`,{full:true});
+    let stream;
+    try{ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1080}},audio:false}); }
+    catch(e){ m.close(); return reject(new Error("เปิดกล้องไม่ได้ ให้อนุญาตการใช้กล้องในเบราว์เซอร์ แล้วลองอีกครั้ง")); }
+    const v=$("video",m.el); v.srcObject=stream; const gpsP=getGPS();
+    const stop=()=>stream.getTracks().forEach(t=>t.stop());
+    $("[data-x]",m.el).onclick=()=>{ stop(); m.close(); reject(new Error("cancel")); };
+    $("[data-shot]",m.el).onclick=async ()=>{
+      if(!v.videoWidth) return;
+      const at=new Date(); const gps=await gpsP;
+      const stamp=`${label} | ${at.toLocaleString("th-TH")}${gps?` | ${gps.lat},${gps.lng}`:" | ไม่มี GPS"}`;
+      const full=snap(v,1600,0.82,stamp), thumb=snap(v,320,0.55,null);
+      stop(); m.close(); resolve({full,thumb,gps,at});
+    };
+  });
+}
+
+/* ================= เชื่อม Apps Script ของ AM ================= */
+async function zonePriv(z){ if(S.privCache[z]) return S.privCache[z]; const d=await db.doc(`zones/${z}/private/script`).get(); const v=d.exists?d.data():{}; S.privCache[z]=v; return v; }
+async function callScript(zoneId, payload){
+  const p=await zonePriv(zoneId);
+  if(!p.url||!p.key) throw new Error("เขตนี้ยังไม่ได้ตั้งค่าที่เก็บภาพ ให้ AM ไปที่ ตั้งค่า > ที่เก็บภาพของเขต");
+  const r=await fetch(p.url,{method:"POST",body:JSON.stringify({...payload,key:p.key})});
+  let j; try{ j=await r.json(); }catch(e){ throw new Error("ที่เก็บภาพของเขตตอบกลับไม่ถูกต้อง ตรวจลิงก์ Apps Script"); }
+  if(!j.ok) throw new Error(j.error||"อัปโหลดไม่สำเร็จ");
+  return j;
+}
+/* ส่งภาพ 1 ช่องไปเก็บ + ให้ AI ตรวจ */
+async function analyzeSlot(slot, shift, photo, opts={}){
+  const baseId = opts.noBaseline ? null : (shift==="night"?slot.baseFileIdNight:slot.baseFileIdDay);
+  const j=await callScript(slot.zoneId,{action:"inspect", image:photo.full, branch:slot.branch, name:`${slot.id}_${shift}`, month:monthKey(),
+    baseFileId:baseId||"", shift, signType:typeOf(slot).name, expectedTenant:opts.expectedTenant!=null?opts.expectedTenant:(slot.tenant||""), lit:!!slot.lit});
+  return {fileId:j.fileId, url:j.url, ai:j.ai||{}, hadBaseline:!!baseId};
+}
+const aiOK = ai => ai && ai.category==="ปกติ" && Number(ai.confidence||0)>=S.settings.aiThreshold;
+
+/* ================= โหลดข้อมูล ================= */
+async function loadAll(){
+  const sd=await db.doc("settings/main").get(); S.settings={...DEFAULT_SETTINGS,...(sd.exists?sd.data():{})}; S.settings.sla={...DEFAULT_SETTINGS.sla,...(S.settings.sla||{})};
+  S.rms={}; try{ (await db.collection("rms").get()).forEach(d=>S.rms[d.id]={id:d.id,...d.data()}); }catch(e){}
+  S.zones={};
+  if(wide()) (await db.collection("zones").get()).forEach(d=>S.zones[d.id]={id:d.id,...d.data()});
+  else for(const z of myZones()){ const d=await db.collection("zones").doc(z).get(); if(d.exists) S.zones[d.id]={id:d.id,...d.data()}; }
+  const zs=wide()?null:myZones();
+  const run=async(c,extra)=>{ const qs=wide()?[db.collection(c)]:zs.map(z=>db.collection(c).where("zoneId","==",z)); const out={};
+    for(const q0 of qs){ const q=extra?extra(q0):q0; (await q.get()).forEach(d=>out[d.id]={id:d.id,...d.data()}); } return out; };
+  const [b,p,s,t,i]=await Promise.all([run("branches"),run("points"),run("slots"),
+    run("tickets",q=>q.where("status","in",["open","pending_close"])), run("inspections",q=>q.where("status","==","review"))]);
+  S.branches=b; S.points=p; S.slots=s; S.tickets=t; S.reviews=i;
+}
+const inFilter = o => { const f=S.f; if(f.zone&&o.zoneId!==f.zone) return false; if(f.rm&&(S.zones[o.zoneId]||{}).rmId!==f.rm) return false; if(f.branch&&(o.branch||o.id)!==f.branch) return false; return true; };
+
+/* ================= Router ================= */
+const routes = {"":viewDash, branch:viewBranch, register:viewRegister, inspect:viewInspect, review:viewReview, tickets:viewTickets, users:viewUsers, admin:viewAdmin};
+function go(h){ location.hash="#/"+h; }
+function renderNav(){
+  const h=location.hash.replace(/^#\//,"").split("/")[0];
+  const nRev=Object.values(S.reviews).filter(inFilter).filter(canReview).length, nT=Object.values(S.tickets).filter(inFilter).length;
+  const badge=n=>n?`<span class="n">${n}</span>`:"";
+  const items=[["","ภาพรวม",IC.home,0]];
+  if(canReviewAny()) items.push(["review","รอยืนยัน",IC.check,nRev]);
+  items.push(["tickets","ใบงาน",IC.tool,nT]);
+  if(canManageUsers()) items.push(["users","ผู้ใช้",IC.users,0]);
+  if(isSuper()||isAM()) items.push(["admin","ตั้งค่า",IC.gear,0]);
+  const on=k=>h===k||(k===""&&["branch","register","inspect"].includes(h));
+  $("#nav").innerHTML=items.map(([k,t,ic,n])=>`<a href="#/${k}" class="${on(k)?"on":""}" ${on(k)?'aria-current="page"':""}>${ic}<span>${t}</span>${badge(n)}</a>`).join("");
+}
+async function render(){
+  if(!S.me) return;
+  const [r,...args]=location.hash.replace(/^#\//,"").split("/").map(decodeURIComponent);
+  renderNav(); const fn=routes[r]||viewDash; const app=$("#app");
+  try{ await fn(app,...args); window.scrollTo(0,0); }catch(e){ console.error(e); app.innerHTML=`<div class="card red">เกิดข้อผิดพลาด: ${esc(e.message)}</div>`; }
+}
+window.addEventListener("hashchange",render);
+
+/* ================= ภาพรวม ================= */
+const selHTML=(id,all,opts,v)=>`<select id="${id}" aria-label="${esc(all)}"><option value="">${esc(all)}</option>${opts.map(([k,t])=>`<option value="${esc(k)}" ${v===k?"selected":""}>${esc(t)}</option>`).join("")}</select>`;
+function filterBar(opt={}){
+  const f=S.f, parts=[];
+  if(wide()&&Object.keys(S.rms).length) parts.push(selHTML("frm","ทุก RM",Object.values(S.rms).sort((a,b)=>a.name.localeCompare(b.name)).map(r=>[r.id,r.name]),f.rm));
+  if(wide()||isRM()){ const zs=Object.values(S.zones).filter(z=>!f.rm||z.rmId===f.rm).sort((a,b)=>a.name.localeCompare(b.name));
+    parts.push(selHTML("fzone",opt.zoneAll||"ทุก AM",zs.map(z=>[z.id,z.name+(z.amName?" · "+z.amName:"")]),f.zone)); }
+  if(!opt.noBranch){ const bs=Object.values(S.branches).filter(b=>(!f.zone||b.zoneId===f.zone)&&(!f.rm||(S.zones[b.zoneId]||{}).rmId===f.rm)).sort((a,b)=>a.id.localeCompare(b.id));
+    if(bs.length>1) parts.push(selHTML("fbr","ทุกสาขา",bs.map(b=>[b.id,b.id+" "+b.name]),f.branch)); }
+  if(!parts.length) return "";
+  return `<div class="filters" role="group" aria-label="ตัวกรอง">${parts.join("")}${(f.rm||f.zone||f.branch)?'<button id="fclr" class="ghost">ล้างตัวกรอง</button>':""}</div>`;
+}
+function bindFilters(){
+  const on=(id,fn)=>{ const e=$("#"+id); if(e) e.onchange=()=>{ fn(e.value); render(); }; };
+  on("frm",v=>{S.f.rm=v; S.f.zone=""; S.f.branch="";}); on("fzone",v=>{S.f.zone=v; S.f.branch="";}); on("fbr",v=>{S.f.branch=v;});
+  const c=$("#fclr"); if(c) c.onclick=()=>{ S.f={rm:"",zone:"",branch:""}; render(); };
+}
+function scopeLabel(){ const f=S.f; if(f.branch) return "สาขา "+((S.branches[f.branch]||{}).name||f.branch); if(f.zone) return "เขต "+((S.zones[f.zone]||{}).name||f.zone);
+  if(f.rm) return "RM "+((S.rms[f.rm]||{}).name||f.rm); if(isRM()) return "RM "+((S.rms[S.me.rmId]||{}).name||""); return wide()?"ทุกเขต":""; }
+function ticketState(t){
+  const now=Date.now(), due=toDate(t.dueAt), created=toDate(t.createdAt)||new Date(), sla=t.slaDays||1;
+  const over=due?Math.floor((now-due.getTime())/86400e3):0, age=(now-created.getTime())/86400e3;
+  let lvl=0, txt="อยู่ในกำหนด";
+  if(due && now>due.getTime()){ lvl=1; txt="เกินกำหนด แจ้งผู้จัดการศูนย์"; if(age>=sla*2){lvl=2; txt="เกิน 2 เท่า แจ้ง AM";} if(age>=sla*3){lvl=3; txt="เกิน 3 เท่า แจ้ง RM";} }
+  return {over:Math.max(0,over), lvl, txt};
+}
+async function viewDash(app){
+  const mk=monthKey();
+  const slots=Object.values(S.slots).filter(inFilter), pts=Object.values(S.points).filter(inFilter), tks=Object.values(S.tickets).filter(inFilter);
+  const bad=s=>!NO_TICKET.includes(s.condition||"ยังไม่ตรวจ");
+  const overdue=tks.filter(t=>ticketState(t).lvl>0);
+  const done=pts.filter(p=>p.lastInspection&&p.lastInspection.day===mk).length;
+  const pct=pts.length?Math.round(done/pts.length*100):0;
+  const okPct=slots.length?Math.round(slots.filter(s=>s.condition==="ปกติ").length/slots.length*100):0;
+  const k=[["มีปัญหา",slots.filter(bad).length,"alert"],["ใบงานเกินกำหนด",overdue.length,"alert"],["ว่าง (ขาวโล่ง)",slots.filter(s=>s.condition==="ว่าง (ขาวโล่ง)").length,"alert"],
+    ["ป้ายทดแทน",slots.filter(s=>s.condition==="ป้ายทดแทน"||s.contract==="ไม่มีสัญญา-ติดฟรี (ทดแทน)").length,""],
+    ["สัญญาไม่ทราบสถานะ",slots.filter(s=>s.contract==="ไม่ทราบสถานะ-รอตรวจสอบ").length,""],["ถ่ายภาพเดือนนี้",pct+"%",pct>=100?"good":""]];
+  const q=(S.q||"").toLowerCase();
+  const brs=Object.values(S.branches).filter(inFilter).filter(b=>!q||(b.id+" "+b.name).toLowerCase().includes(q))
+    .map(b=>{ const bs=slots.filter(s=>s.branch===b.id), bp=pts.filter(p=>p.branch===b.id), bt=tks.filter(t=>t.branch===b.id);
+      return {b,bs,bp,nBad:bs.filter(bad).length,nOver:bt.filter(t=>ticketState(t).lvl>0).length,nEmpty:bs.filter(s=>s.condition==="ว่าง (ขาวโล่ง)").length,
+        done:bp.filter(p=>p.lastInspection&&p.lastInspection.day===mk).length,pend:bp.filter(p=>p.status==="pending").length}; })
+    .sort((x,y)=>(y.nOver-x.nOver)||(y.nBad-x.nBad)||x.b.id.localeCompare(y.b.id));
+  const cards=brs.map(r=>{ const p=r.bp.length?Math.round(r.done/r.bp.length*100):0;
+    return `<button class="bcard" data-b="${esc(r.b.id)}"><div class="top"><div class="grow"><div class="code">${esc(r.b.id)}${wide()?" · "+esc((S.zones[r.b.zoneId]||{}).name||""):""}</div><div class="name">${esc(r.b.name)}</div></div>${fmtBadge(r.b.format)}</div>
+      ${healthBar(r.bs)}
+      <div class="stats"><div><b>${r.bs.length}</b><span>ช่อง</span></div><div class="${r.nBad?"hot":""}"><b>${r.nBad}</b><span>มีปัญหา</span></div><div class="${r.nOver?"hot":""}"><b>${r.nOver}</b><span>เกินกำหนด</span></div><div class="${r.nEmpty?"hot":""}"><b>${r.nEmpty}</b><span>ว่าง</span></div></div>
+      <div class="row" style="margin-top:10px;font-size:13px;color:var(--ink2)"><span class="grow">ถ่ายภาพเดือนนี้ ${r.bp.length?p+"%":"-"}</span>${r.pend?`<span class="chip c-warn">รออนุมัติผัง ${r.pend}</span>`:""}</div>
+      <div class="prog"><i style="width:${p}%"></i></div></button>`; }).join("");
+  const top=overdue.sort((a,b)=>ticketState(b).over-ticketState(a).over).slice(0,8);
+  app.innerHTML=`${filterBar()}<div class="hero"><div class="t"><b>สภาพป้าย ${esc(scopeLabel())}</b><span>${new Date().toLocaleDateString("th-TH",{month:"long",year:"numeric"})}</span></div>
+     <div class="big">${okPct}%<small>ปกติ จาก ${fmt(slots.length)} ช่อง</small></div>${healthBar(slots)}${legendHTML(slots)}</div>
+   <div class="kpis">${k.map(([t,v,c])=>`<div class="kpi ${c==="alert"&&!v?"":c}"><span>${t}</span><b>${v}</b></div>`).join("")}</div>
+   ${top.length?`<h2>เกินกำหนดนานที่สุด</h2><div class="card" style="padding:6px 16px">${top.map(t=>{const s=ticketState(t);return `<div class="row" style="padding:10px 0;border-bottom:1px solid #EDF2F1"><div class="grow"><b>${esc((S.branches[t.branch]||{}).name||t.branch)}</b> <span class="muted">${esc(t.slotId)}</span><div>${chip(t.category)}</div></div><div class="red" style="text-align:right">${s.over} วัน<div class="muted" style="font-weight:400">${s.txt}</div></div></div>`;}).join("")}</div>`:""}
+   <h2>สาขา (${brs.length})</h2>
+   <div class="toolbar"><input type="search" id="bq" placeholder="ค้นหารหัสหรือชื่อสาขา" value="${esc(S.q||"")}" class="grow"><button id="csv">${IC.down}CSV</button></div>
+   ${cards?`<div class="blist">${cards}</div>`:`<div class="card empty-state">ยังไม่มีสาขา ${isSuper()||isAM()?'ไปที่ <a href="#/admin">ตั้งค่า</a> เพื่อเพิ่มสาขาหรือนำเข้าไฟล์ทะเบียนป้าย':""}</div>`}`;
+  bindFilters();
+  const bq=$("#bq"); bq.oninput=()=>{ S.q=bq.value; const pos=bq.selectionStart; viewDash(app).then(()=>{ const n=$("#bq"); n.focus(); n.setSelectionRange(pos,pos); }); };
+  $$("[data-b]",app).forEach(x=>x.onclick=()=>go("branch/"+x.dataset.b));
+  $("#csv").onclick=()=>exportCSV(slots);
+}
+function exportCSV(slots){
+  const head=["รหัสช่อง","รหัสจุด","รหัสสาขา","ชื่อสาขา","เขต","ประเภท","ลำดับ","แถว","คอลัมน์","กว้างซม","สูงซม","มีไฟ","ร้าน","สถานะสัญญา","Unit","ค่าเช่า","เริ่มสัญญา","สิ้นสุดสัญญา","วันติดตั้ง","สภาพ","ตรวจล่าสุด"];
+  const rows=slots.map(s=>[s.id,s.pointId,s.branch,(S.branches[s.branch]||{}).name,(S.zones[s.zoneId]||{}).name,typeOf(s).name,s.no,s.row,s.col,s.w,s.h,s.lit?"มีไฟ":"ไม่มีไฟ",s.tenant,s.contract,s.unit,s.rent,s.start,s.end,s.install,s.condition,s.lastInspectedAt?toDate(s.lastInspectedAt).toISOString().slice(0,10):""]);
+  const csv="\ufeff"+[head,...rows].map(r=>r.map(v=>`"${String(v==null?"":v).replace(/"/g,'""')}"`).join(",")).join("\n");
+  const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"})); a.download=`${new Date().toISOString().slice(0,10)}_sign_status.csv`; a.click();
+}
+
+/* ================= หน้าสาขา + ผังป้าย ================= */
+function pylonHTML(p, slots, curKey){
+  const t=typeOf(p); const rows=Math.max(p.rows||1,...slots.map(s=>s.row||1)), cols=Math.max(p.cols||1,...slots.map(s=>s.col||1));
+  const at={}; slots.forEach(s=>at[`${s.row}-${s.col}`]=s);
+  let cells="";
+  for(let r=1;r<=rows;r++) for(let c=1;c<=cols;c++){
+    const s=at[`${r}-${c}`], key=`${r}-${c}`, cur=curKey===key?" cur":"";
+    if(!s){ cells+=`<div class="tile skip${cur}" style="grid-row:${r};grid-column:${c}"></div>`; continue; }
+    const cls=COND_CLS[s.condition||"ยังไม่ตรวจ"]||"none";
+    cells+=`<button class="tile c-${cls}${cls==="empty"?" empty":""}${cur}" data-slot="${esc(s.id)}" style="grid-row:${r};grid-column:${c}" title="${esc(s.id)}"><b>${String(s.no).padStart(2,"0")}</b><span>${esc(s.tenant|| (cls==="empty"?"ว่าง":"—"))}</span></button>`;
+  }
+  return `<div style="display:inline-block;max-width:100%"><div class="pylon"><div class="head"><span>${esc(t.name)} ${esc(p.structNo)}${p.side&&p.side!=="-"?" · ฝั่ง "+esc(p.side):""}</span><span>${p.lit?"มีไฟ":""}</span></div>
+    <div class="pgrid" style="grid-template-columns:repeat(${cols},minmax(74px,1fr))">${cells}</div></div>${t.legs?'<div class="legs"><i></i><i></i></div>':""}</div>`;
+}
+async function viewBranch(app, code){
+  const b=S.branches[code]; if(!b){ app.innerHTML=`<div class="card">ไม่พบสาขา ${esc(code)}</div>`; return; }
+  const mk=monthKey(); const pts=Object.values(S.points).filter(p=>p.branch===code).sort((a,b)=>(a.typeCode+a.structNo+a.side).localeCompare(b.typeCode+b.structNo+b.side));
+  const canShoot=canShootBranch(code), canEdit=canEditZone(b.zoneId);
+  const allS=Object.values(S.slots).filter(s=>s.branch===code);
+  app.innerHTML=`${crumb("#/","ภาพรวม")}<div class="row"><div class="grow"><div class="muted">${esc(code)} ${fmtBadge(b.format)}</div><h1 style="margin-top:2px">${esc(b.name)}</h1></div>${canShoot?`<button class="pri" id="reg">${IC.plus}ลงทะเบียนผังป้าย</button>`:""}</div>
+  ${allS.length?`<div class="card">${healthBar(allS)}${legendHTML(allS)}</div>`:""}
+  ${pts.length?"":`<div class="card empty-state">สาขานี้ยังไม่มีผังป้าย ${canShoot?"กด “ลงทะเบียนผังป้ายใหม่” เพื่อเริ่มจากจุดแรก เช่น Pylon ต้นที่ 1 ฝั่ง A":""}</div>`}
+  ${pts.map(p=>{ const ss=Object.values(S.slots).filter(s=>s.pointId===p.id); const li=p.lastInspection||{};
+    return `<div class="card"><div class="pt"><div>${pylonHTML(p,ss)}</div><div>
+      <div class="row pinfo"><b class="grow">${esc(p.sideName||p.id)}</b>${p.status==="pending"?'<span class="chip c-warn">รออนุมัติผัง</span>':""}</div><div class="muted">${esc(p.id)}</div>
+      <div class="muted">${[p.road,p.direction].filter(Boolean).map(esc).join(" · ")}</div>
+      <div class="status-line">กลางวัน: ${li.day===mk?'<span class="chip c-ok">ถ่ายแล้วเดือนนี้</span>':'<span class="chip c-bad">ยังไม่ถ่ายเดือนนี้</span>'}
+      ${p.lit?` กลางคืน: ${li.night===mk?'<span class="chip c-ok">ถ่ายแล้ว</span>':'<span class="chip c-bad">ยังไม่ถ่าย</span>'}`:""}</div>
+      <div class="row">${canShoot?`<button class="pri" data-insp="${esc(p.id)}">${IC.cam}ถ่ายภาพตรวจ</button>`:""}<button data-ov="${esc(p.id)}">ภาพรวมล่าสุด</button>
+      ${canEdit&&p.status==="pending"?`<button data-appr="${esc(p.id)}">อนุมัติผัง</button>`:""}${canEdit?`<button data-ep="${esc(p.id)}">แก้ไขจุด</button>`:""}</div>
+    </div></div></div>`; }).join("")}`;
+  const r=$("#reg"); if(r) r.onclick=()=>go("register/"+code);
+  $$("[data-insp]",app).forEach(x=>x.onclick=()=>go("inspect/"+x.dataset.insp));
+  $$("[data-slot]",app).forEach(x=>x.onclick=()=>slotModal(x.dataset.slot));
+  $$("[data-ov]",app).forEach(x=>x.onclick=()=>overviewModal(x.dataset.ov));
+  $$("[data-ep]",app).forEach(x=>x.onclick=()=>pointModal(x.dataset.ep));
+  $$("[data-appr]",app).forEach(x=>x.onclick=async()=>{ await db.doc("points/"+x.dataset.appr).update({status:"approved",approvedBy:S.me.email,updatedAt:FV.serverTimestamp()}); S.points[x.dataset.appr].status="approved"; toast("อนุมัติผังแล้ว"); render(); });
+}
+async function overviewModal(pid){
+  const d=await db.doc("thumbs/"+pid).get(); const t=d.exists?d.data():{};
+  const m=modal(`<h2 style="margin-top:0">ภาพรวม ${esc(pid)}</h2><div class="thumbs">${["day","night"].map(k=>t[k]?`<figure><img src="${t[k]}" alt="ภาพรวม${k==="day"?"กลางวัน":"กลางคืน"}"><figcaption>${k==="day"?"กลางวัน":"กลางคืน"} ${esc(t[k+"Month"]||"")}${t[k+"Url"]?` · <a href="${esc(t[k+"Url"])}" target="_blank" rel="noopener">ภาพเต็ม</a>`:""}</figcaption></figure>`:"").join("")||'<p class="muted">ยังไม่มีภาพรวม</p>'}</div><div class="row" style="justify-content:flex-end;margin-top:12px"><button data-c>ปิด</button></div>`);
+  $("[data-c]",m.el).onclick=m.close;
+}
+async function slotModal(id){
+  const s=S.slots[id]; const edit=canEditZone(s.zoneId);
+  const th=await db.doc("thumbs/"+id).get().then(d=>d.exists?d.data():{}).catch(()=>({}));
+  const f=(k,l,type="text")=>`<label>${l}</label><input data-k="${k}" type="${type}" value="${esc(s[k]==null?"":s[k])}" ${edit?"":"disabled"}>`;
+  const sel=(k,l,opts)=>`<label>${l}</label><select data-k="${k}" ${edit?"":"disabled"}>${opts.map(o=>`<option ${s[k]===o?"selected":""}>${esc(o)}</option>`).join("")}</select>`;
+  const img=(k,cap,u)=>th[k]?`<figure><img src="${th[k]}" alt="${cap}"><figcaption>${cap}${s[u]?` · <a href="${esc(s[u])}" target="_blank" rel="noopener">ภาพเต็ม</a>`:""}</figcaption></figure>`:"";
+  const m=modal(`<h2 style="margin-top:0">${esc(id)}</h2><p>${chip(s.condition)} <span class="muted">ตรวจล่าสุด ${dTH(s.lastInspectedAt)}</span></p>
+   <div class="thumbs">${img("baseDay","ต้นแบบกลางวัน","baseUrlDay")}${img("baseNight","ต้นแบบกลางคืน","baseUrlNight")}${img("last","ล่าสุด","lastUrl")}</div>
+   ${f("tenant","ชื่อร้าน/แบรนด์")}${sel("contract","สถานะสัญญา",CONTRACT)}${f("unit","Unit ใน Simplicity")}${f("rent","ค่าเช่า/เดือน (บาท)","number")}
+   <div class="row"><div class="grow">${f("w","กว้าง (ซม.)","number")}</div><div class="grow">${f("h","สูง (ซม.)","number")}</div></div>
+   <div class="row"><div class="grow">${f("start","วันเริ่มสัญญา","date")}</div><div class="grow">${f("end","วันสิ้นสุดสัญญา","date")}</div></div>
+   <div class="row"><div class="grow">${f("install","วันติดตั้งป้าย","date")}</div><div class="grow">${f("contentExpiry","วันหมดอายุเนื้อหา (Banner)","date")}</div></div>
+   ${sel("condition","สภาพป้าย (แก้ด้วยตนเอง)",COND)}<label class="check"><input type="checkbox" data-k="lit" ${s.lit?"checked":""} ${edit?"":"disabled"}> ป้ายมีไฟ</label>
+   <div class="row" style="justify-content:flex-end;margin-top:12px">${edit?'<button class="dan" data-del>ลบช่อง</button>':""}<span class="grow"></span><button data-c>ปิด</button>${edit?'<button class="pri" data-s>บันทึก</button>':""}</div>`);
+  $("[data-c]",m.el).onclick=m.close;
+  if(!edit) return;
+  $("[data-s]",m.el).onclick=async e=>{
+    const u={}; $$("[data-k]",m.el).forEach(i=>{ const k=i.dataset.k; u[k]= i.type==="checkbox"?i.checked : (i.type==="number"? (i.value===""?null:Number(i.value)) : i.value); });
+    busy(e.target,true); try{ await db.doc("slots/"+id).update({...u,updatedAt:FV.serverTimestamp()}); Object.assign(S.slots[id],u); m.close(); toast("บันทึกแล้ว"); render(); }catch(err){ toast(err.message); busy(e.target,false); }
+  };
+  $("[data-del]",m.el).onclick=async()=>{ if(!await confirmBox(`ลบช่อง ${id}? ข้อมูลช่องนี้จะหายจากทะเบียน (ภาพใน Drive ยังอยู่)`)) return; await db.doc("slots/"+id).delete(); await db.doc("thumbs/"+id).delete().catch(()=>{}); delete S.slots[id]; m.close(); toast("ลบแล้ว"); render(); };
+}
+function pointModal(pid){
+  const p=S.points[pid];
+  const m=modal(`<h2 style="margin-top:0">แก้ไขจุด ${esc(pid)}</h2>
+   <label>ชื่อฝั่ง/ชื่อประตู</label><input data-k="sideName" value="${esc(p.sideName||"")}">
+   <label>ถนน</label><input data-k="road" value="${esc(p.road||"")}">
+   <label>ทิศทางจราจร</label><input data-k="direction" value="${esc(p.direction||"")}">
+   <label class="check"><input type="checkbox" data-k="lit" ${p.lit?"checked":""}> จุดนี้มีป้ายไฟ (ต้องถ่ายรอบกลางคืน)</label>
+   <p class="muted">รหัสจุด ประเภท ลำดับโครงสร้าง และฝั่ง แก้ไม่ได้ เพราะผูกกับรหัสช่องและประวัติภาพ ถ้าลงทะเบียนผิด ให้ลบจุดแล้วลงทะเบียนใหม่</p>
+   <div class="row"><button class="dan" data-del>ลบจุดและช่องทั้งหมด</button><span class="grow"></span><button data-c>ปิด</button><button class="pri" data-s>บันทึก</button></div>`);
+  $("[data-c]",m.el).onclick=m.close;
+  $("[data-s]",m.el).onclick=async()=>{ const u={}; $$("[data-k]",m.el).forEach(i=>u[i.dataset.k]=i.type==="checkbox"?i.checked:i.value.trim()); await db.doc("points/"+pid).update({...u,updatedAt:FV.serverTimestamp()}); Object.assign(p,u); m.close(); toast("บันทึกแล้ว"); render(); };
+  $("[data-del]",m.el).onclick=async()=>{ const ss=Object.values(S.slots).filter(s=>s.pointId===pid); if(!await confirmBox(`ลบจุด ${pid} และช่อง ${ss.length} ช่อง?`)) return;
+    const b=db.batch(); b.delete(db.doc("points/"+pid)); b.delete(db.doc("thumbs/"+pid)); ss.forEach(s=>{b.delete(db.doc("slots/"+s.id)); b.delete(db.doc("thumbs/"+s.id));}); await b.commit();
+    delete S.points[pid]; ss.forEach(s=>delete S.slots[s.id]); m.close(); toast("ลบแล้ว"); render(); };
+}
+
+/* ================= ลงทะเบียนผังป้าย ================= */
+async function viewRegister(app, code){
+  const b=S.branches[code]; if(!b||!canShootBranch(code)){ app.innerHTML=`<div class="card">ไม่มีสิทธิ์ลงทะเบียนสาขานี้</div>`; return; }
+  app.innerHTML=`${crumb("#/branch/"+esc(code),code+" "+b.name)}<h1>ลงทะเบียนผังป้าย</h1>
+  <div class="card"><div class="step">ขั้นที่ 1 จาก 3 · ข้อมูลจุดป้าย</div><div class="stepbar"><i class="on"></i><i></i><i></i></div>
+   <label>ประเภทป้าย</label><select id="ty">${TYPES.map(t=>`<option value="${t.code}">${t.n} ${esc(t.name)}</option>`).join("")}</select>
+   <div class="row"><div class="grow"><label>ลำดับโครงสร้าง (ต้นที่/ชุดที่/เสาที่)</label><input id="sn" type="number" min="1" value="1"></div>
+   <div class="grow"><label>รหัสฝั่ง/ประตู</label><select id="sd">${SIDES.map(s=>`<option>${s}</option>`).join("")}</select></div></div>
+   <p class="muted">A = ฝั่งหันเข้าถนนหลัก/การจราจรหลัก, B = อีกฝั่ง, D1–D6 = ประตู, - = ไม่มีฝั่ง</p>
+   <label>ชื่อฝั่ง/ชื่อประตู</label><input id="sname" placeholder="ขาเข้าอำเภอเมือง">
+   <div class="row"><div class="grow"><label>ถนน</label><input id="road" placeholder="ถนนกาญจนาภิเษก"></div>
+   <div class="grow"><label>ทิศทางจราจร</label><select id="dir"><option value="">-</option><option>ขาเข้า</option><option>ขาออก</option></select></div></div>
+   <div class="row"><div class="grow"><label>จำนวนแถว (บน→ล่าง)</label><input id="rows" type="number" min="1" max="20" value="4"></div>
+   <div class="grow"><label>จำนวนคอลัมน์ (ซ้าย→ขวา)</label><input id="cols" type="number" min="1" max="12" value="3"></div></div>
+   <p class="muted">ผังไม่เป็นตารางเต็ม เช่น บางแถวมีช่องเดียว ให้ใส่ขนาดตารางที่ใหญ่ที่สุด แล้วกด “ไม่มีช่องตรงนี้” ในตำแหน่งที่ว่าง</p>
+   <label class="check"><input type="checkbox" id="lit"> จุดนี้มีป้ายไฟ</label>
+   <p id="pidPrev" class="muted"></p>
+   <div class="row" style="justify-content:flex-end"><button class="pri" id="go">${IC.cam}ถ่ายภาพรวมของจุดนี้</button></div></div>`;
+  const prev=()=>{ const id=pointIdOf(code,$("#ty").value,$("#sn").value||"?",$("#sd").value); $("#pidPrev").textContent="รหัสจุด: "+id+(S.points[id]?" (มีอยู่แล้ว)":""); };
+  $$("#ty,#sn,#sd",app).forEach(e=>e.oninput=prev); $("#ty").onchange=()=>{ if(!TYPE[$("#ty").value].sided) $("#sd").value="-"; prev(); }; prev();
+  $("#go").onclick=async()=>{
+    const P={branch:code, zoneId:b.zoneId, typeCode:$("#ty").value, structNo:Number($("#sn").value), side:$("#sd").value, sideName:$("#sname").value.trim(), road:$("#road").value.trim(), direction:$("#dir").value, rows:Number($("#rows").value), cols:Number($("#cols").value), lit:$("#lit").checked};
+    if(!P.structNo||!P.rows||!P.cols) return toast("กรอกลำดับโครงสร้าง จำนวนแถว และคอลัมน์");
+    if(P.side!=="-"&&!P.sideName) return toast("ใส่ชื่อฝั่งหรือชื่อประตู เพื่อให้คนถ่ายภาพรอบถัดไปเลือกฝั่งถูก");
+    P.id=pointIdOf(code,P.typeCode,P.structNo,P.side);
+    if(S.points[P.id]||(await db.doc("points/"+P.id).get()).exists) return toast("รหัสจุดนี้มีอยู่แล้ว ใช้ปุ่มถ่ายภาพตรวจของจุดเดิม หรือเปลี่ยนลำดับ/ฝั่ง");
+    let ov; try{ ov=await takePhoto(`${P.id} ภาพรวม`); }catch(e){ if(e.message!=="cancel") toast(e.message); return; }
+    if(!checkGPS(b,ov.gps)) return;
+    const btn=$("#go"); busy(btn,true,"กำลังอัปโหลดภาพรวม…");
+    try{ const j=await callScript(b.zoneId,{action:"upload",image:ov.full,branch:code,name:`${P.id}_overview_day`,month:monthKey()}); P.overview={fileId:j.fileId,url:j.url,thumb:ov.thumb}; }
+    catch(e){ busy(btn,false); return toast(e.message,5000); }
+    regSlots(app,b,P);
+  };
+}
+function checkGPS(b, gps){
+  if(!(b.lat&&b.lng)) return true;
+  if(!gps){ toast("ไม่พบตำแหน่ง GPS เปิดการเข้าถึงตำแหน่งแล้วถ่ายใหม่",5000); return isSuper()||isAM(); }
+  const d=haversine(b.lat,b.lng,gps.lat,gps.lng);
+  if(d>S.settings.gpsRadiusM){ toast(`ตำแหน่งห่างจากสาขา ${Math.round(d)} ม. เกินที่กำหนด ${S.settings.gpsRadiusM} ม.`,5000); return isSuper()||isAM(); }
+  return true;
+}
+function regSlots(app,b,P){
+  const cells=[]; for(let r=1;r<=P.rows;r++) for(let c=1;c<=P.cols;c++) cells.push({row:r,col:c});
+  let i=0, no=0; const done=[]; let last={w:"",h:"",lit:P.lit};
+  const step=()=>{
+    if(i>=cells.length) return regSave(app,b,P,done);
+    const cell=cells[i], tmp=done.map(d=>({...d,condition:d.ai&&d.ai.category||"ยังไม่ตรวจ"}));
+    app.innerHTML=`<h1>ลงทะเบียน ${esc(P.id)}</h1><div class="card"><div class="stepbar"><i class="on"></i><i class="on"></i><i></i></div><div class="step">ขั้นที่ 2 จาก 3 · ช่องที่ตำแหน่ง แถว ${cell.row} คอลัมน์ ${cell.col} (${i+1}/${cells.length})</div>
+      <div style="margin:10px 0">${pylonHTML({...P},tmp,`${cell.row}-${cell.col}`)}</div>
+      <div class="row"><div class="grow"><label>กว้าง (ซม.)</label><input id="w" type="number" value="${esc(last.w)}"></div><div class="grow"><label>สูง (ซม.)</label><input id="h" type="number" value="${esc(last.h)}"></div></div>
+      <label>ชื่อร้าน/แบรนด์ที่เห็นบนป้าย (ไม่ทราบให้เว้นว่าง)</label><input id="tn">
+      <label class="check"><input type="checkbox" id="sl" ${last.lit?"checked":""}> ช่องนี้มีไฟ</label>
+      <div id="res" class="muted"></div>
+      <div class="row" style="margin-top:10px"><button id="skip">ไม่มีช่องตรงนี้</button><span class="grow"></span><button class="pri" id="shot">${IC.cam}ถ่ายภาพช่องนี้</button></div></div>`;
+    $("#skip").onclick=()=>{ i++; step(); };
+    $("#shot").onclick=async e=>{
+      let ph; try{ ph=await takePhoto(`${P.id} แถว${cell.row} คอลัมน์${cell.col}`); }catch(err){ if(err.message!=="cancel") toast(err.message); return; }
+      busy(e.target,true,"กำลังอัปโหลดและให้ AI ตรวจ…");
+      const sNo=no+1, sid=slotIdOf(P.id,sNo);
+      const slot={id:sid, pointId:P.id, branch:b.id, zoneId:b.zoneId, typeCode:P.typeCode, no:sNo, row:cell.row, col:cell.col,
+        w:$("#w").value?Number($("#w").value):null, h:$("#h").value?Number($("#h").value):null, lit:$("#sl").checked, tenant:$("#tn").value.trim()};
+      try{ const r=await analyzeSlot(slot,"day",ph,{noBaseline:true}); Object.assign(slot,{photo:ph,fileId:r.fileId,url:r.url,ai:r.ai});
+        no++; done.push(slot); last={w:$("#w").value,h:$("#h").value,lit:slot.lit};
+        if(r.ai&&r.ai.category==="ภาพใช้ไม่ได้"){ toast("AI แจ้งว่าภาพใช้ไม่ได้: "+(r.ai.note||"")+" — บันทึกไว้แล้ว และส่งให้ AM ตรวจ",5000); }
+        i++; step();
+      }catch(err){ busy(e.target,false); toast(err.message,5000); }
+    };
+  };
+  step();
+}
+async function regSave(app,b,P,slots){
+  if(!slots.length){ toast("ยังไม่มีช่องป้ายที่ถ่ายภาพ"); return go("branch/"+b.id); }
+  app.innerHTML=`<h1>ลงทะเบียน ${esc(P.id)}</h1><div class="card"><div class="stepbar"><i class="on"></i><i class="on"></i><i class="on"></i></div><div class="step">ขั้นที่ 3 จาก 3 · ตรวจและบันทึก</div><div style="margin:10px 0">${pylonHTML(P,slots.map(s=>({...s,condition:s.ai&&s.ai.category&&COND.includes(s.ai.category)?s.ai.category:"ยังไม่ตรวจ"})))}</div>
+   <p>${slots.length} ช่อง · ${isAM()||isSuper()?"บันทึกและอนุมัติผังทันที":"บันทึกแล้วรอ AM อนุมัติผัง"}</p><div class="row" style="justify-content:flex-end"><button class="pri" id="save">บันทึกผังป้าย</button></div></div>`;
+  $("#save").onclick=async e=>{
+    busy(e.target,true,"กำลังบันทึก…"); const now=FV.serverTimestamp(), mk=monthKey(), ops=[];
+    const point={branch:P.branch,zoneId:P.zoneId,typeCode:P.typeCode,structNo:P.structNo,side:P.side,sideName:P.sideName,road:P.road,direction:P.direction,rows:P.rows,cols:P.cols,lit:P.lit,
+      slotCount:slots.length,status:(isAM()||isSuper())?"approved":"pending",createdBy:S.me.email,createdAt:now,updatedAt:now,lastInspection:{day:mk}};
+    ops.push([db.doc("points/"+P.id),point]);
+    ops.push([db.doc("thumbs/"+P.id),{zoneId:P.zoneId,branch:P.branch,day:P.overview.thumb,dayUrl:P.overview.url,dayMonth:mk}]);
+    for(const s of slots){
+      const auto=aiOK(s.ai), cond=auto?"ปกติ":"ยังไม่ตรวจ";
+      ops.push([db.doc("slots/"+s.id),{pointId:s.pointId,branch:s.branch,zoneId:s.zoneId,typeCode:s.typeCode,no:s.no,row:s.row,col:s.col,w:s.w,h:s.h,lit:s.lit,tenant:s.tenant,
+        contract:"ไม่ทราบสถานะ-รอตรวจสอบ",condition:cond,baseFileIdDay:s.fileId,baseUrlDay:s.url,lastFileId:s.fileId,lastUrl:s.url,lastInspectedAt:now,createdAt:now,updatedAt:now}]);
+      ops.push([db.doc("thumbs/"+s.id),{zoneId:s.zoneId,branch:s.branch,baseDay:s.photo.thumb,last:s.photo.thumb}]);
+      ops.push([db.collection("inspections").doc(),{slotId:s.id,pointId:s.pointId,branch:s.branch,zoneId:s.zoneId,shift:"day",month:mk,fileId:s.fileId,url:s.url,thumb:s.photo.thumb,
+        ai:s.ai||{},status:auto?"auto":"review",kind:"register",gps:s.photo.gps||null,takenBy:S.me.email,takenAt:now}]);
+    }
+    try{ await commitOps(ops); toast("บันทึกผังป้ายแล้ว"); await loadAll(); go("branch/"+P.branch); }
+    catch(err){ busy(e.target,false); toast(err.message,6000); }
+  };
+}
+
+/* ================= ถ่ายภาพตรวจรายเดือน ================= */
+async function viewInspect(app, pid){
+  const p=S.points[pid]; if(!p||!canShootBranch(p.branch)){ app.innerHTML=`<div class="card">ไม่มีสิทธิ์หรือไม่พบจุด</div>`; return; }
+  const b=S.branches[p.branch], st=S.settings, h=bkkHour(), mk=monthKey(), li=p.lastInspection||{};
+  const dayOK=!st.enforceTime||(h>=st.dayStart&&h<st.dayEnd), nightOK=!st.enforceTime||(h>=st.nightStart&&h<st.nightEnd);
+  app.innerHTML=`${crumb("#/branch/"+esc(p.branch),p.branch+" "+b.name)}<h1>ถ่ายภาพตรวจ</h1><div class="muted" style="margin-top:-8px;margin-bottom:12px">${esc(pid)}</div>
+   <div class="card"><p>${esc(typeOf(p).name)} ${esc(p.structNo)} · ${esc(p.sideName||"")} ${p.road?"· "+esc(p.road):""}</p>
+   <div class="row"><button class="pri" data-sh="day" ${dayOK?"":"disabled"}>${IC.cam}รอบกลางวัน${li.day===mk?" (ถ่ายแล้ว ถ่ายซ้ำได้)":""}</button>
+   ${p.lit?`<button class="pri" data-sh="night" ${nightOK?"":"disabled"} style="background:var(--lotus-dd);border-color:var(--lotus-dd)">${IC.cam}รอบกลางคืน${li.night===mk?" (ถ่ายแล้ว ถ่ายซ้ำได้)":""}</button>`:""}</div>
+   <p class="muted">ถ่ายกลางวันได้ ${st.dayStart}:00–${st.dayEnd}:00 น.${p.lit?` · กลางคืน ${st.nightStart}:00–${st.nightEnd}:00 น. (หลังเปิดไฟป้ายแล้ว)`:""}</p></div>`;
+  $$("[data-sh]",app).forEach(x=>x.onclick=()=>runInspect(app,p,b,x.dataset.sh));
+}
+async function runInspect(app,p,b,shift){
+  const shTH=shift==="day"?"กลางวัน":"กลางคืน", mk=monthKey();
+  let ov; try{ ov=await takePhoto(`${p.id} ภาพรวม ${shTH}`); }catch(e){ if(e.message!=="cancel") toast(e.message); return; }
+  if(!checkGPS(b,ov.gps)) return;
+  app.innerHTML=`<div class="card">กำลังอัปโหลดภาพรวม…</div>`;
+  let ovr; try{ ovr=await callScript(p.zoneId,{action:"upload",image:ov.full,branch:p.branch,name:`${p.id}_overview_${shift}`,month:mk}); }catch(e){ toast(e.message,5000); return go("inspect/"+p.id); }
+  await db.doc("thumbs/"+p.id).set({zoneId:p.zoneId,branch:p.branch,[shift]:ov.thumb,[shift+"Url"]:ovr.url,[shift+"Month"]:mk},{merge:true});
+  const slots=Object.values(S.slots).filter(s=>s.pointId===p.id&&(shift==="day"||s.lit)).sort((a,b)=>a.row-b.row||a.col-b.col);
+  let i=0; const results=[];
+  const step=()=>{
+    if(i>=slots.length) return finish();
+    const s=slots[i];
+    app.innerHTML=`<h1>${esc(p.id)} · ${shTH}</h1><div class="card"><div class="step">ช่อง ${i+1} จาก ${slots.length} · ${esc(s.id)}</div><div class="prog" style="margin:6px 0 4px"><i style="width:${Math.round(i/slots.length*100)}%"></i></div>
+     <div style="margin:10px 0">${pylonHTML(p,Object.values(S.slots).filter(x=>x.pointId===p.id),`${s.row}-${s.col}`)}</div>
+     <p>ร้านในทะเบียน: <b>${esc(s.tenant||"-")}</b> · สภาพล่าสุด ${chip(s.condition)}</p>
+     <div class="row"><button id="skip">ถ่ายไม่ได้</button><span class="grow"></span><button class="pri" id="shot">${IC.cam}ถ่ายภาพช่องนี้</button></div></div>`;
+    $("#skip").onclick=async()=>{ const why=prompt("เหตุผลที่ถ่ายไม่ได้ เช่น มีรถบัง, ป้ายถูกรื้อ"); if(!why) return;
+      results.push({s,skip:why}); await db.collection("inspections").add({slotId:s.id,pointId:p.id,branch:s.branch,zoneId:s.zoneId,shift,month:mk,status:"review",kind:"skip",note:why,ai:{},takenBy:S.me.email,takenAt:FV.serverTimestamp()}); i++; step(); };
+    $("#shot").onclick=async e=>{
+      let ph; try{ ph=await takePhoto(`${s.id} ${shTH}`); }catch(err){ if(err.message!=="cancel") toast(err.message); return; }
+      busy(e.target,true,"กำลังอัปโหลดและให้ AI ตรวจ…");
+      try{
+        const r=await analyzeSlot(s,shift,ph);
+        if(r.ai&&r.ai.category==="ภาพใช้ไม่ได้"&&!(await confirmBox(`AI แจ้งว่าภาพใช้ไม่ได้: ${r.ai.note||""} ต้องการบันทึกภาพนี้ไว้หรือไม่ (กดยกเลิกเพื่อถ่ายใหม่)`))){ busy(e.target,false); return; }
+        const firstBase=!r.hadBaseline, auto=aiOK(r.ai), now=FV.serverTimestamp();
+        const su={lastFileId:r.fileId,lastUrl:r.url,lastInspectedAt:now,updatedAt:now}, tu={zoneId:s.zoneId,branch:s.branch,last:ph.thumb};
+        if(firstBase){ if(shift==="day"){su.baseFileIdDay=r.fileId; su.baseUrlDay=r.url; tu.baseDay=ph.thumb;} else {su.baseFileIdNight=r.fileId; su.baseUrlNight=r.url; tu.baseNight=ph.thumb;} }
+        if(auto) su.condition="ปกติ";
+        const b2=db.batch();
+        b2.update(db.doc("slots/"+s.id),su); b2.set(db.doc("thumbs/"+s.id),tu,{merge:true});
+        b2.set(db.collection("inspections").doc(),{slotId:s.id,pointId:p.id,branch:s.branch,zoneId:s.zoneId,shift,month:mk,fileId:r.fileId,url:r.url,thumb:ph.thumb,ai:r.ai||{},
+          status:auto?"auto":"review",kind:firstBase?"baseline":"monthly",gps:ph.gps||null,takenBy:S.me.email,takenAt:now});
+        await b2.commit(); Object.assign(S.slots[s.id],su,{lastInspectedAt:new Date()});
+        results.push({s,ai:r.ai,auto}); i++; step();
+      }catch(err){ busy(e.target,false); toast(err.message,5000); }
+    };
+  };
+  const finish=async()=>{
+    await db.doc("points/"+p.id).update({["lastInspection."+shift]:mk,updatedAt:FV.serverTimestamp()});
+    p.lastInspection={...(p.lastInspection||{}),[shift]:mk};
+    const rev=results.filter(r=>!r.auto).length;
+    app.innerHTML=`<h1>ส่งภาพ ${esc(p.id)} แล้ว</h1><div class="card"><p>${results.length} ช่อง · ปกติ ${results.filter(r=>r.auto).length} · ส่งให้ AM ยืนยัน ${rev}</p>
+     ${results.map(r=>`<div class="row" style="border-bottom:1px solid #edf1f0;padding:6px 0"><span class="grow">${esc(r.s.id)}</span>${r.skip?`<span class="chip c-none">ถ่ายไม่ได้</span>`:chip(COND.includes(r.ai.category)?r.ai.category:"ยังไม่ตรวจ")}<span class="muted">${r.ai&&r.ai.note?esc(r.ai.note):""}</span></div>`).join("")}
+     <div class="row" style="justify-content:flex-end;margin-top:10px"><button class="pri" id="back">กลับหน้าสาขา</button></div></div>`;
+    $("#back").onclick=async()=>{ await loadAll(); go("branch/"+p.branch); };
+  };
+  step();
+}
+
+/* ================= AM ยืนยันผล AI ================= */
+async function viewReview(app){
+  const list=Object.values(S.reviews).filter(inFilter).filter(canReview).sort((a,b)=>(a.branch+a.slotId).localeCompare(b.branch+b.slotId));
+  app.innerHTML=`<h1>รอยืนยันผล AI (${list.length})</h1>${filterBar()}
+  ${list.length?"":'<div class="card empty-state">ไม่มีรายการรอยืนยัน</div>'}<div id="rl"></div>`;
+  bindFilters();
+  const rl=$("#rl");
+  for(const r of list.slice(0,30)){
+    const s=S.slots[r.slotId]||{}; const th=await db.doc("thumbs/"+r.slotId).get().then(d=>d.exists?d.data():{}).catch(()=>({}));
+    const base=r.shift==="night"?th.baseNight:th.baseDay; const sug=COND.includes(r.ai&&r.ai.category)?r.ai.category:(s.condition||"ยังไม่ตรวจ");
+    const el=document.createElement("div"); el.className="card";
+    el.innerHTML=`<div class="row"><b class="grow">${esc(r.slotId)}</b><span class="muted">${esc((S.branches[r.branch]||{}).name||r.branch)} · ${r.shift==="night"?"กลางคืน":"กลางวัน"} · ${dTH(r.takenAt)}</span></div>
+     <p>ร้านในทะเบียน: ${esc(s.tenant||"-")} · AI: ${r.kind==="skip"?"ถ่ายไม่ได้ — "+esc(r.note):`<b>${esc((r.ai&&r.ai.category)||"ไม่มีผล")}</b> (ความมั่นใจ ${Math.round((r.ai&&r.ai.confidence||0)*100)}%) ${esc(r.ai&&r.ai.note||r.ai&&r.ai.error||"")}`}</p>
+     <div class="thumbs">${base?`<figure><img src="${base}" alt="ภาพต้นแบบ"><figcaption>ต้นแบบ</figcaption></figure>`:""}${r.thumb?`<figure><img src="${r.thumb}" alt="ภาพที่ถ่าย"><figcaption>ภาพที่ถ่าย${r.url?` · <a href="${esc(r.url)}" target="_blank" rel="noopener">ภาพเต็ม</a>`:""}</figcaption></figure>`:""}</div>
+     <div class="row" style="margin-top:8px"><select class="grow" data-f>${COND.filter(c=>c!=="ยังไม่ตรวจ").map(c=>`<option ${c===sug?"selected":""}>${esc(c)}</option>`).join("")}</select></div>
+     ${r.thumb?'<label class="check"><input type="checkbox" data-base> ใช้ภาพนี้เป็นภาพต้นแบบใหม่ (เช่น เปลี่ยนป้ายใหม่แล้ว)</label>':""}
+     <div class="row" style="justify-content:flex-end"><button class="pri" data-ok>ยืนยัน</button></div>`;
+    rl.appendChild(el);
+    $("[data-ok]",el).onclick=async e=>{ busy(e.target,true); try{ await confirmReview(r,$("[data-f]",el).value,!!($("[data-base]",el)||{}).checked); el.remove(); delete S.reviews[r.id]; renderNav(); toast("ยืนยันแล้ว"); }catch(err){ busy(e.target,false); toast(err.message,5000);} };
+  }
+  if(list.length>30) rl.insertAdjacentHTML("beforeend",`<p class="muted">แสดง 30 รายการแรก ยืนยันแล้วกดเมนูอีกครั้งเพื่อโหลดรายการถัดไป</p>`);
+}
+async function confirmReview(r, finalCond, setBase){
+  const s=S.slots[r.slotId]; const now=FV.serverTimestamp(); const b=db.batch();
+  b.update(db.doc("inspections/"+r.id),{status:"confirmed",finalCondition:finalCond,reviewedBy:S.me.email,reviewedAt:now});
+  if(s){
+    const su={condition:finalCond,updatedAt:now};
+    if(setBase&&r.fileId){ if(r.shift==="night"){su.baseFileIdNight=r.fileId; su.baseUrlNight=r.url;} else {su.baseFileIdDay=r.fileId; su.baseUrlDay=r.url;} b.set(db.doc("thumbs/"+s.id),{[r.shift==="night"?"baseNight":"baseDay"]:r.thumb,zoneId:s.zoneId,branch:s.branch},{merge:true}); }
+    b.update(db.doc("slots/"+s.id),su); Object.assign(s,{condition:finalCond});
+    const hasOpen=Object.values(S.tickets).some(t=>t.slotId===s.id&&t.category===finalCond);
+    if(!NO_TICKET.includes(finalCond)&&!hasOpen){
+      const sla=S.settings.sla[finalCond]||7, ref=db.collection("tickets").doc();
+      const t={slotId:s.id,pointId:s.pointId,branch:s.branch,zoneId:s.zoneId,category:finalCond,shift:r.shift||"day",tenant:s.tenant||"",slaDays:sla,
+        status:"open",createdAt:TSx.now(),dueAt:TSx.fromDate(addDays(new Date(),sla)),createdBy:S.me.email,inspectionId:r.id,beforeUrl:r.url||""};
+      b.set(ref,t); S.tickets[ref.id]={id:ref.id,...t};
+    }
+  }
+  await b.commit();
+}
+
+/* ================= ใบงาน ================= */
+async function viewTickets(app){
+  const list=Object.values(S.tickets).filter(inFilter).sort((a,b)=>ticketState(b).over-ticketState(a).over);
+  app.innerHTML=`<h1>ใบงานแก้ไขป้าย (${list.length})</h1>${filterBar()}
+  ${list.length?"":'<div class="card empty-state">ไม่มีใบงานค้าง</div>'}
+  ${list.map(t=>{ const st=ticketState(t), br=S.branches[t.branch]||{};
+    return `<div class="card"><div class="row"><b class="grow">${esc(t.slotId)}</b>${chip(t.category)}${t.status==="pending_close"?' <span class="chip c-warn">รออนุมัติปิด</span>':""}</div>
+    <div class="muted">${esc(br.name||t.branch)} · ร้าน ${esc(t.tenant||"-")} · เปิด ${dTH(t.createdAt)} · กำหนดเสร็จ ${dTH(t.dueAt)}</div>
+    <p class="${st.lvl?"red":""}">${st.lvl?`เกิน ${st.over} วัน · ${st.txt}`:"อยู่ในกำหนด"}</p>
+    <div class="row">${canShootBranch(t.branch)&&t.status==="open"?`<button class="pri" data-close="${esc(t.id)}">${IC.cam}ปิดงาน</button>`:""}
+    ${canReview(t)&&t.status==="pending_close"?`<button class="pri" data-ap="${esc(t.id)}">อนุมัติปิด</button><button data-rj="${esc(t.id)}">ส่งกลับให้แก้ใหม่</button>`:""}
+    ${t.afterUrl?`<a href="${esc(t.afterUrl)}" target="_blank" rel="noopener">ภาพหลังแก้</a>`:""}${t.beforeUrl?` <a href="${esc(t.beforeUrl)}" target="_blank" rel="noopener">ภาพก่อนแก้</a>`:""}</div></div>`;}).join("")}`;
+  bindFilters();
+  $$("[data-close]",app).forEach(x=>x.onclick=()=>closeTicket(S.tickets[x.dataset.close]));
+  $$("[data-ap]",app).forEach(x=>x.onclick=async()=>{ const t=S.tickets[x.dataset.ap]; await finalizeClose(t,t.result||"ปกติ",t.afterTenant); toast("ปิดใบงานแล้ว"); render(); });
+  $$("[data-rj]",app).forEach(x=>x.onclick=async()=>{ await db.doc("tickets/"+x.dataset.rj).update({status:"open",updatedAt:FV.serverTimestamp()}); S.tickets[x.dataset.rj].status="open"; toast("ส่งกลับแล้ว"); render(); });
+}
+function closeTicket(t){
+  const s=S.slots[t.slotId]; if(!s) return toast("ไม่พบช่องป้ายนี้ในทะเบียน");
+  const m=modal(`<h2 style="margin-top:0">ปิดงาน ${esc(t.slotId)}</h2><p>ปัญหา: ${chip(t.category)}</p>
+   <label>สภาพหลังแก้</label><select id="res"><option value="ปกติ">ปกติ (ซ่อม/เปลี่ยนแล้ว)</option><option value="ป้ายทดแทน">ขึ้นป้ายทดแทนแล้ว</option></select>
+   <div id="fw" hidden><label>ชื่อป้ายทดแทน</label><input id="ftn" placeholder="True / Food Court / Pharmacy"></div>
+   <p class="muted">ต้องถ่ายภาพ${t.shift==="night"?"ตอนกลางคืนเมื่อเปิดไฟแล้ว":""}หลังแก้ ระบบจะให้ AI ตรวจก่อนปิดงาน</p>
+   <div class="row" style="justify-content:flex-end"><button data-c>ยกเลิก</button><button class="pri" data-go>ถ่ายภาพหลังแก้</button></div>`);
+  $("#res",m.el).onchange=()=>{$("#fw",m.el).hidden=$("#res",m.el).value!=="ป้ายทดแทน";};
+  $("[data-c]",m.el).onclick=m.close;
+  $("[data-go]",m.el).onclick=async e=>{
+    const result=$("#res",m.el).value, ftn=$("#ftn",m.el).value.trim();
+    if(result==="ป้ายทดแทน"&&!ftn) return toast("ใส่ชื่อป้ายทดแทน");
+    let ph; try{ ph=await takePhoto(`${t.slotId} หลังแก้`); }catch(err){ if(err.message!=="cancel") toast(err.message); return; }
+    busy(e.target,true,"กำลังอัปโหลดและให้ AI ตรวจ…");
+    try{
+      const r=await analyzeSlot(s,t.shift||"day",ph,{noBaseline:result==="ป้ายทดแทน",expectedTenant:result==="ป้ายทดแทน"?ftn:s.tenant});
+      const pass=aiOK(r.ai)||(result==="ป้ายทดแทน"&&r.ai&&!["หลุด/ขาด","ไฟดับทั้งป้าย","ว่าง (ขาวโล่ง)","ภาพใช้ไม่ได้"].includes(r.ai.category));
+      const after={afterFileId:r.fileId,afterUrl:r.url,afterAI:r.ai||{},result,afterTenant:ftn||null,closedBy:S.me.email,closedAt:FV.serverTimestamp(),updatedAt:FV.serverTimestamp()};
+      Object.assign(t,after,{afterThumb:ph.thumb});
+      if(pass||canReview(t)){ await finalizeClose(t,result,ftn,ph.thumb); toast(pass?"AI ยืนยันแล้ว ปิดใบงาน":"ปิดใบงานโดยผู้มีสิทธิ์อนุมัติ"); }
+      else { await db.doc("tickets/"+t.id).update({...after,status:"pending_close"}); t.status="pending_close"; toast(`AI ยังเห็นว่า: ${r.ai.category||"-"} ส่งให้ผู้จัดการศูนย์หรือ AM อนุมัติปิด`,5000); }
+      m.close(); render();
+    }catch(err){ busy(e.target,false); toast(err.message,5000); }
+  };
+}
+async function finalizeClose(t, result, ftn, thumb){
+  const s=S.slots[t.slotId]; const now=FV.serverTimestamp(); const b=db.batch();
+  b.update(db.doc("tickets/"+t.id),{status:"closed",result,afterFileId:t.afterFileId||null,afterUrl:t.afterUrl||null,afterAI:t.afterAI||{},afterTenant:ftn||null,closedBy:t.closedBy||S.me.email,closedAt:now,updatedAt:now});
+  if(s){
+    const su={condition:result,updatedAt:now}, night=t.shift==="night";
+    if(t.afterFileId){ su.lastFileId=t.afterFileId; su.lastUrl=t.afterUrl; su.lastInspectedAt=now;
+      if(night){su.baseFileIdNight=t.afterFileId; su.baseUrlNight=t.afterUrl;} else {su.baseFileIdDay=t.afterFileId; su.baseUrlDay=t.afterUrl;} }
+    if(result==="ป้ายทดแทน"&&ftn){ su.tenant=ftn; su.contract="ไม่มีสัญญา-ติดฟรี (ทดแทน)"; }
+    b.update(db.doc("slots/"+s.id),su); Object.assign(s,su);
+    if(thumb) b.set(db.doc("thumbs/"+s.id),{zoneId:s.zoneId,branch:s.branch,last:thumb,[night?"baseNight":"baseDay"]:thumb},{merge:true});
+  }
+  await b.commit(); delete S.tickets[t.id];
+}
+
+/* ================= ตั้งค่า ================= */
+async function viewAdmin(app){
+  if(!(isSuper()||isAM())){ app.innerHTML='<div class="card">ไม่มีสิทธิ์</div>'; return; }
+  const zid=isSuper()?(S.f.zone||Object.keys(S.zones)[0]||""):S.me.zoneId; const z=S.zones[zid];
+  const priv=zid?await zonePriv(zid).catch(()=>({})):{};
+  const zb=Object.values(S.branches).filter(b=>b.zoneId===zid).sort((a,b)=>a.id.localeCompare(b.id));
+  app.innerHTML=`<h1>ตั้งค่า</h1>
+  ${isSuper()?superHTML():""}
+  ${isSuper()?`<h2>ตั้งค่ารายเขต</h2>${filterBar({noBranch:true,zoneAll:"เลือกเขต AM"})}`:""}
+  ${z?`
+  <h2>ที่เก็บภาพของเขต ${esc(z.name)}</h2><div class="card">
+    <p class="muted">ภาพทั้งหมดของเขตนี้เก็บใน Google Drive ของ AM ผ่าน Apps Script ที่ AM ติดตั้งเอง ดูวิธีติดตั้งในคู่มือ</p>
+    <label>ลิงก์ Web app ของ Apps Script</label><input id="purl" value="${esc(priv.url||"")}" placeholder="https://script.google.com/macros/s/…/exec">
+    <label>รหัสอัปโหลด (UPLOAD_KEY)</label><input id="pkey" value="${esc(priv.key||"")}">
+    <label>LINE Group ID ของเขต (สำหรับแจ้งเตือน ไม่บังคับ)</label><input id="line" value="${esc(z.lineGroupId||"")}">
+    <div class="row" style="justify-content:flex-end;margin-top:8px"><button id="ping">ทดสอบการเชื่อมต่อ</button><button class="pri" id="psave">บันทึก</button></div></div>
+  <h2>สาขาในเขต (${zb.length})</h2><div class="card scroll"><table class="tbl"><thead><tr><th>รหัส</th><th>ชื่อ</th><th>รูปแบบ</th><th>พิกัด</th><th></th></tr></thead><tbody>
+    ${zb.map(b=>`<tr><td>${esc(b.id)}</td><td>${esc(b.name)}</td><td>${esc(b.format||"")}</td><td class="muted">${b.lat?esc(b.lat+","+b.lng):"-"}</td><td><button data-eb="${esc(b.id)}">แก้ไข</button></td></tr>`).join("")}</tbody></table>
+    <div class="row" style="margin-top:8px"><button id="addb">เพิ่มสาขา</button></div></div>
+  <h2>นำเข้าไฟล์ทะเบียนป้าย (Excel)</h2><div class="card">
+    <p class="muted">ใช้ไฟล์แม่แบบ Sign Registry Template ระบบจะนำเข้าเฉพาะสาขาของเขตนี้ ข้ามแถวที่หมายเหตุว่า “แถวตัวอย่าง” และไม่ลบข้อมูลเดิม ภาพต้นแบบจะได้จากการถ่ายภาพตรวจครั้งแรก</p>
+    <input type="file" id="xl" accept=".xlsx,.xls"><div id="xlp"></div></div>`:`<div class="card empty-state">${isSuper()?"สร้างเขตแรกด้านบน หรือเลือกเขตจากเมนู":"บัญชีนี้ยังไม่ได้ผูกกับเขต ติดต่อ Super Admin"}</div>`}`;
+  bindFilters();
+  if(isSuper()) bindSuper(app);
+  if(!z) return;
+  $("#psave").onclick=async()=>{ const url=$("#purl").value.trim(), key=$("#pkey").value.trim();
+    await db.doc(`zones/${zid}/private/script`).set({url,key,updatedBy:S.me.email,updatedAt:FV.serverTimestamp()}); await db.doc("zones/"+zid).update({lineGroupId:$("#line").value.trim()});
+    S.privCache[zid]={url,key}; toast("บันทึกแล้ว"); };
+  $("#ping").onclick=async e=>{ busy(e.target,true,"กำลังทดสอบ…"); S.privCache[zid]={url:$("#purl").value.trim(),key:$("#pkey").value.trim()};
+    try{ const j=await callScript(zid,{action:"ping"}); toast(`เชื่อมต่อได้ · เวอร์ชัน ${j.version} · AI ${j.ai?"พร้อม":"ยังไม่ได้ตั้งค่า GEMINI_API_KEY"}`,5000); }catch(err){ toast(err.message,5000); } busy(e.target,false); };
+  $("#addb").onclick=()=>branchModal(zid,null);
+  $$("[data-eb]",app).forEach(x=>x.onclick=()=>branchModal(zid,S.branches[x.dataset.eb]));
+  $("#xl").onchange=e=>importExcel(e.target.files[0],zid,$("#xlp"));
+}
+function branchModal(zid,b){
+  const m=modal(`<h2 style="margin-top:0">${b?"แก้ไขสาขา":"เพิ่มสาขา"}</h2>
+   <label>รหัสสาขา</label><input id="bc" value="${esc(b?b.id:"")}" ${b?"disabled":""}>
+   <label>ชื่อสาขา</label><input id="bn" value="${esc(b?b.name:"")}">
+   <label>รูปแบบ</label><select id="bf">${["Lotus's","Makro","Talad Super"].map(f=>`<option ${b&&b.format===f?"selected":""}>${f}</option>`).join("")}</select>
+   <div class="row"><div class="grow"><label>ละติจูด (ไม่บังคับ)</label><input id="blat" type="number" step="any" value="${esc(b&&b.lat||"")}"></div><div class="grow"><label>ลองจิจูด</label><input id="blng" type="number" step="any" value="${esc(b&&b.lng||"")}"></div></div>
+   <p class="muted">ถ้าใส่พิกัด ระบบจะตรวจว่าถ่ายภาพในรัศมี ${S.settings.gpsRadiusM} ม. จากสาขา</p>
+   <div class="row" style="justify-content:flex-end"><button data-c>ยกเลิก</button><button class="pri" data-s>บันทึก</button></div>`);
+  $("[data-c]",m.el).onclick=m.close;
+  $("[data-s]",m.el).onclick=async()=>{ const id=$("#bc",m.el).value.trim(); if(!id||!$("#bn",m.el).value.trim()) return toast("กรอกรหัสและชื่อสาขา");
+    if(!b&&S.branches[id]) return toast("รหัสสาขานี้มีอยู่แล้ว");
+    const d={zoneId:zid,name:$("#bn",m.el).value.trim(),format:$("#bf",m.el).value,lat:$("#blat",m.el).value?Number($("#blat",m.el).value):null,lng:$("#blng",m.el).value?Number($("#blng",m.el).value):null,updatedAt:FV.serverTimestamp()};
+    try{ await db.doc("branches/"+id).set(d,{merge:true}); S.branches[id]={id,...S.branches[id],...d}; m.close(); toast("บันทึกแล้ว"); render(); }catch(e){ toast(e.message,5000); } };
+}
+const PERMS=[
+  ["ดูภาพรวม ผังป้าย ใบงาน",["ทุกเขต","ทุกเขต","เขตใน RM","เขตตัวเอง","เขตตัวเอง","เขตตัวเอง"]],
+  ["ลงทะเบียนผัง ถ่ายภาพตรวจ ปิดใบงาน",["✓","—","—","ทุกสาขาในเขต","สาขาที่ได้รับ","สาขาที่ได้รับ"]],
+  ["ยืนยันผล AI และอนุมัติปิดงาน",["✓","—","—","ทุกสาขาในเขต","สาขาที่ได้รับ","—"]],
+  ["อนุมัติผัง แก้ข้อมูลช่อง สัญญา ค่าเช่า",["✓","—","—","✓","—","—"]],
+  ["จัดการสาขา ที่เก็บภาพ นำเข้า Excel",["✓","—","—","เขตตัวเอง","—","—"]],
+  ["จัดการผู้ใช้",["ทุกสิทธิ์","—","—","AM ผจก.ศูนย์ พนักงานสาขา","—","—"]],
+  ["ตั้ง RM เขต AM และกติการะบบ",["✓","—","—","—","—","—"]],
+  ["ดาวน์โหลด CSV",["✓","✓","✓","✓","✓","✓"]]];
+const ROLE_CLS={super:"rs",viewer:"rv",rm:"rr",am:"ra",manager:"rmg",branch:"rb"};
+function scopeOf(u){
+  if(u.role==="super") return "ทุกเขต (ระบบหลังบ้าน)"; if(u.role==="viewer") return "ดูทุกเขต";
+  if(u.role==="rm") return `${esc((S.rms[u.rmId]||{}).name||u.rmId||"-")} · ${(u.zones||[]).length} เขต`;
+  const z=esc((S.zones[u.zoneId]||{}).name||u.zoneId||"-");
+  if(u.role==="am") return "เขต "+z;
+  return `เขต ${z} · ${(u.branches||[]).map(b=>esc((S.branches[b]||{}).name||b)).join(", ")||"-"}`;
+}
+async function viewUsers(app){
+  if(!canManageUsers()){ app.innerHTML='<div class="card">ไม่มีสิทธิ์</div>'; return; }
+  const users=[]; const q=isSuper()?db.collection("users"):db.collection("users").where("zoneId","==",S.me.zoneId);
+  (await q.get()).forEach(d=>users.push({id:d.id,...d.data()}));
+  const f=S.f, uf=S.uf;
+  const list=users.filter(u=>{
+    if(uf.role&&u.role!==uf.role) return false;
+    if(uf.status==="active"&&!u.active) return false; if(uf.status==="off"&&u.active) return false;
+    if(uf.q&&!(u.id+" "+(u.name||"")+" "+(u.empCode||"")).toLowerCase().includes(uf.q.toLowerCase())) return false;
+    if(f.rm&&!(u.rmId===f.rm||(S.zones[u.zoneId]||{}).rmId===f.rm)) return false;
+    if(f.zone&&!(u.zoneId===f.zone||(u.zones||[]).includes(f.zone))) return false;
+    if(f.branch&&!(u.branches||[]).includes(f.branch)) return false;
+    return true; }).sort((a,b)=>ROLE_ORDER.indexOf(a.role)-ROLE_ORDER.indexOf(b.role)||(a.name||a.id).localeCompare(b.name||b.id));
+  const cnt=r=>users.filter(u=>u.role===r&&u.active).length;
+  const roles=isSuper()?ROLE_ORDER:["am","manager","branch"];
+  app.innerHTML=`<div class="row"><h1 class="grow">ผู้ใช้และสิทธิ์</h1><button class="pri" id="addu">${IC.plus}เพิ่มผู้ใช้</button></div>
+   <div class="rolebar">${roles.map(r=>`<button class="rolepill ${uf.role===r?"on":""}" data-rf="${r}"><span class="rdot ${ROLE_CLS[r]}"></span>${ROLE_TH[r]} <b>${cnt(r)}</b></button>`).join("")}</div>
+   ${filterBar()}
+   <div class="toolbar"><input type="search" id="uq" class="grow" placeholder="ค้นหาชื่อ Gmail หรือรหัสพนักงาน" value="${esc(uf.q)}">
+     ${selHTML("ust","ทุกสถานะ",[["active","ใช้งาน"],["off","ปิดใช้งาน"]],uf.status)}</div>
+   <div class="ulist">${list.map(u=>`<div class="ucard ${u.active?"":"off"}"><div class="av ${ROLE_CLS[u.role]||""}">${esc(((u.name||u.id).trim()[0]||"?").toUpperCase())}</div>
+     <div class="grow" style="min-width:0"><div class="row" style="gap:6px"><b>${esc(u.name||"(ไม่ระบุชื่อ)")}</b><span class="rchip ${ROLE_CLS[u.role]||""}">${ROLE_TH[u.role]||u.role}</span>${u.active?"":'<span class="chip c-bad">ปิดใช้งาน</span>'}</div>
+     <div class="muted ell">${esc(u.id)}${u.empCode?" · "+esc(u.empCode):""}</div><div class="muted ell">${scopeOf(u)}</div></div>
+     ${u.role==="super"&&!isSuper()?"":`<button data-eu="${esc(u.id)}">แก้ไข</button>`}</div>`).join("")||'<div class="card empty-state">ไม่พบผู้ใช้ตามตัวกรอง</div>'}</div>
+   <h2>ตารางสิทธิ์</h2><div class="card scroll"><table class="tbl perm"><thead><tr><th>สิ่งที่ทำได้</th>${ROLE_ORDER.map(r=>`<th><span class="rchip ${ROLE_CLS[r]}">${ROLE_TH[r]}</span></th>`).join("")}</tr></thead>
+   <tbody>${PERMS.map(([t,v])=>`<tr><td>${t}</td>${v.map(x=>`<td class="${x==="—"?"no":"yes"}">${x}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+  bindFilters();
+  $$("[data-rf]",app).forEach(x=>x.onclick=()=>{ uf.role=uf.role===x.dataset.rf?"":x.dataset.rf; render(); });
+  const uq=$("#uq"); uq.oninput=()=>{ uf.q=uq.value; clearTimeout(uq._t); uq._t=setTimeout(()=>{ const pos=uq.value.length; viewUsers(app).then(()=>{ const n=$("#uq"); n.focus(); n.setSelectionRange(pos,pos); }); },250); };
+  $("#ust").onchange=e=>{ uf.status=e.target.value; render(); };
+  $("#addu").onclick=()=>userModal(null);
+  $$("[data-eu]",app).forEach(x=>x.onclick=()=>userModal(users.find(u=>u.id===x.dataset.eu)));
+}
+function userModal(u){
+  const roles=isSuper()?ROLE_ORDER:["am","manager","branch"];
+  const zones=Object.values(S.zones).sort((a,b)=>a.name.localeCompare(b.name));
+  const defZone=u&&u.zoneId||(isSuper()?(S.f.zone||""):S.me.zoneId);
+  const m=modal(`<h2 style="margin-top:0">${u?"แก้ไขผู้ใช้":"เพิ่มผู้ใช้"}</h2>
+   <label>Gmail</label><input id="ue" type="email" value="${esc(u?u.id:"")}" ${u?"disabled":""} placeholder="name@gmail.com" autocomplete="off">
+   <div class="row"><div class="grow"><label>ชื่อ-นามสกุล</label><input id="un" value="${esc(u&&u.name||"")}"></div><div style="width:150px"><label>รหัสพนักงาน</label><input id="uc" value="${esc(u&&u.empCode||"")}"></div></div>
+   <label>สิทธิ์</label><div class="roles">${roles.map(r=>`<label class="ropt"><input type="radio" name="ur" value="${r}" ${(u?u.role:"branch")===r?"checked":""}><span><b>${ROLE_TH[r]}</b><small>${{super:"จัดการระบบทั้งหมด",viewer:"ดูได้ทุกเขต แก้ไม่ได้",rm:"ดูทุกเขตใน RM",am:"จัดการทุกอย่างในเขต",manager:"ถ่ายภาพ ยืนยันผล AI อนุมัติปิดงาน ของสาขาที่ได้รับ",branch:"ถ่ายภาพและปิดงาน ของสาขาที่ได้รับ"}[r]}</small></span></label>`).join("")}</div>
+   <div id="wrm"><label>RM</label>${selHTML("urm","เลือก RM",Object.values(S.rms).map(r=>[r.id,r.name]),u&&u.rmId||"")}</div>
+   <div id="wzone">${isSuper()?`<label>เขต AM</label>${selHTML("uz","เลือกเขต",zones.map(z=>[z.id,z.name]),defZone)}`:`<p class="muted">เขต ${esc((S.zones[S.me.zoneId]||{}).name||S.me.zoneId)}</p>`}</div>
+   <div id="wbr"><label>สาขาที่รับผิดชอบ</label><div id="ubl" class="row"></div></div>
+   <label class="check"><input type="checkbox" id="ua" ${!u||u.active?"checked":""}> เปิดใช้งาน</label>
+   <div class="row" style="margin-top:8px">${u&&(isSuper()||u.role!=="super")&&u.id!==S.me.email?'<button class="dan" data-del>ลบผู้ใช้</button>':""}<span class="grow"></span><button data-c>ยกเลิก</button><button class="pri" data-s>บันทึก</button></div>`);
+  const R=()=>($("input[name=ur]:checked",m.el)||{}).value, Z=()=>isSuper()?($("#uz",m.el)||{}).value:S.me.zoneId;
+  const drawBr=()=>{ const sel=new Set(u&&u.branches||[]); const bs=Object.values(S.branches).filter(b=>b.zoneId===Z()).sort((a,b)=>a.id.localeCompare(b.id));
+    $("#ubl",m.el).innerHTML=bs.map(b=>`<label class="check"><input type="checkbox" value="${esc(b.id)}" ${sel.has(b.id)?"checked":""}> ${esc(b.id)} ${esc(b.name)}</label>`).join("")||'<span class="muted">ยังไม่มีสาขาในเขตนี้</span>'; };
+  const tog=()=>{ const r=R(); $("#wrm",m.el).hidden=r!=="rm"; $("#wzone",m.el).hidden=!["am","manager","branch"].includes(r); $("#wbr",m.el).hidden=!["manager","branch"].includes(r); };
+  $$("input[name=ur]",m.el).forEach(i=>i.onchange=tog); if($("#uz",m.el)) $("#uz",m.el).onchange=drawBr; drawBr(); tog();
+  $("[data-c]",m.el).onclick=m.close;
+  const del=$("[data-del]",m.el); if(del) del.onclick=async()=>{ if(!await confirmBox(`ลบผู้ใช้ ${u.id}? ถ้าแค่หยุดใช้ชั่วคราว ให้ปิด “เปิดใช้งาน” แทน`)) return; await db.doc("users/"+u.id).delete(); m.close(); toast("ลบแล้ว"); render(); };
+  $("[data-s]",m.el).onclick=async()=>{
+    const email=$("#ue",m.el).value.trim().toLowerCase(); if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return toast("Gmail ไม่ถูกต้อง");
+    const r=R(), zone=["am","manager","branch"].includes(r)?Z():"", rmId=r==="rm"?$("#urm",m.el).value:"";
+    const branches=["manager","branch"].includes(r)?$$("#ubl input:checked",m.el).map(i=>i.value):[];
+    if(["am","manager","branch"].includes(r)&&!zone) return toast("เลือกเขต AM");
+    if(r==="rm"&&!rmId) return toast("เลือก RM");
+    if(["manager","branch"].includes(r)&&!branches.length) return toast("เลือกสาขาอย่างน้อย 1 สาขา");
+    const d={name:$("#un",m.el).value.trim(),empCode:$("#uc",m.el).value.trim(),role:r,zoneId:zone,rmId,branches,
+      zones:r==="rm"?Object.values(S.zones).filter(z=>z.rmId===rmId).map(z=>z.id):[],active:$("#ua",m.el).checked,updatedBy:S.me.email,updatedAt:FV.serverTimestamp()};
+    try{ await db.doc("users/"+email).set(d,{merge:true}); m.close(); toast("บันทึกแล้ว"); render(); }catch(e){ toast("บันทึกไม่ได้: "+e.message,5000); } };
+}
+function superHTML(){
+  const st=S.settings, rms=Object.values(S.rms).sort((a,b)=>a.name.localeCompare(b.name));
+  return `<h2>RM (${rms.length})</h2><div class="card scroll"><table class="tbl"><thead><tr><th>รหัส</th><th>ชื่อ RM</th><th>LINE Group ID</th><th class="num">เขต AM</th><th></th></tr></thead><tbody>
+   ${rms.map(r=>`<tr><td>${esc(r.id)}</td><td><input data-rmn="${esc(r.id)}" value="${esc(r.name)}"></td><td><input data-rml="${esc(r.id)}" value="${esc(r.lineGroupId||"")}" placeholder="ไม่บังคับ"></td><td class="num">${Object.values(S.zones).filter(z=>z.rmId===r.id).length}</td><td><button data-rms="${esc(r.id)}">บันทึก</button></td></tr>`).join("")}</tbody></table>
+   <div class="row" style="margin-top:8px"><input id="rmid" placeholder="รหัส RM เช่น RM-BKK" style="max-width:180px"><input id="rmname" placeholder="ชื่อ RM" style="max-width:220px"><button id="rmadd">${IC.plus}เพิ่ม RM</button></div></div>
+  <h2>เขต AM (${Object.keys(S.zones).length})</h2><div class="card scroll"><table class="tbl"><thead><tr><th>รหัสเขต</th><th>ชื่อเขต</th><th>ชื่อ AM</th><th>RM</th><th class="num">สาขา</th><th></th></tr></thead><tbody>
+   ${Object.values(S.zones).sort((a,b)=>a.name.localeCompare(b.name)).map(z=>`<tr><td>${esc(z.id)}</td><td><input data-zn="${esc(z.id)}" value="${esc(z.name)}"></td><td><input data-za="${esc(z.id)}" value="${esc(z.amName||"")}"></td>
+     <td>${selHTML("zr-"+z.id,"- ไม่ระบุ -",rms.map(r=>[r.id,r.name]),z.rmId||"")}</td><td class="num">${Object.values(S.branches).filter(b=>b.zoneId===z.id).length}</td><td><button data-zs="${esc(z.id)}">บันทึก</button></td></tr>`).join("")}</tbody></table>
+   <div class="row" style="margin-top:8px"><input id="zid" placeholder="รหัสเขต เช่น AM-EAST" style="max-width:180px"><input id="zname" placeholder="ชื่อเขต" style="max-width:200px"><input id="zam" placeholder="ชื่อ AM" style="max-width:180px">${selHTML("zrm","RM ของเขต",rms.map(r=>[r.id,r.name]),"")}<button id="zadd">${IC.plus}เพิ่มเขต</button></div></div>
+  <h2>กติการะบบ</h2><div class="card">
+   <div class="row">${Object.keys(DEFAULT_SETTINGS.sla).map(k=>`<div style="min-width:150px"><label>${esc(k)} (วัน)</label><input type="number" min="1" data-sla="${esc(k)}" value="${st.sla[k]}"></div>`).join("")}</div>
+   <div class="row"><div><label>กลางวัน เริ่ม–สิ้นสุด (ชม.)</label><div class="row"><input id="ds" type="number" value="${st.dayStart}" style="width:80px"><input id="de" type="number" value="${st.dayEnd}" style="width:80px"></div></div>
+   <div><label>กลางคืน เริ่ม–สิ้นสุด (ชม.)</label><div class="row"><input id="ns" type="number" value="${st.nightStart}" style="width:80px"><input id="ne" type="number" value="${st.nightEnd}" style="width:80px"></div></div>
+   <div><label>ความมั่นใจ AI ขั้นต่ำ (0–1)</label><input id="th" type="number" step="0.05" value="${st.aiThreshold}" style="width:100px"></div>
+   <div><label>รัศมี GPS (ม.)</label><input id="gr" type="number" value="${st.gpsRadiusM}" style="width:110px"></div></div>
+   <label class="check"><input type="checkbox" id="et" ${st.enforceTime?"checked":""}> บังคับช่วงเวลาถ่ายภาพ</label>
+   <div class="row" style="justify-content:flex-end"><button class="pri" id="ssave">บันทึกกติกา</button></div></div>`;
+}
+async function syncRMUsers(rmIds){
+  for(const rmId of rmIds.filter(Boolean)){
+    const zones=Object.values(S.zones).filter(z=>z.rmId===rmId).map(z=>z.id);
+    const q=await db.collection("users").where("rmId","==",rmId).get(); const b=db.batch(); let n=0;
+    q.forEach(d=>{ if(d.data().role==="rm"){ b.update(d.ref,{zones}); n++; } }); if(n) await b.commit();
+  }
+}
+function bindSuper(app){
+  $("#rmadd").onclick=async()=>{ const id=$("#rmid").value.trim().toUpperCase().replace(/\s+/g,"-"), name=$("#rmname").value.trim(); if(!id||!name) return toast("กรอกรหัสและชื่อ RM");
+    if(S.rms[id]) return toast("รหัส RM นี้มีอยู่แล้ว");
+    await db.doc("rms/"+id).set({name,lineGroupId:"",createdAt:FV.serverTimestamp()}); S.rms[id]={id,name}; toast("เพิ่ม RM แล้ว"); render(); };
+  $$("[data-rms]",app).forEach(x=>x.onclick=async()=>{ const id=x.dataset.rms, d={name:$(`[data-rmn="${id}"]`).value.trim(),lineGroupId:$(`[data-rml="${id}"]`).value.trim()};
+    await db.doc("rms/"+id).update(d); Object.assign(S.rms[id],d); toast("บันทึกแล้ว"); });
+  $$("[data-zs]",app).forEach(x=>x.onclick=async()=>{ const id=x.dataset.zs, old=S.zones[id].rmId||"";
+    const d={name:$(`[data-zn="${id}"]`).value.trim(),amName:$(`[data-za="${id}"]`).value.trim(),rmId:$("#zr-"+id).value};
+    await db.doc("zones/"+id).update(d); Object.assign(S.zones[id],d); if(old!==d.rmId) await syncRMUsers([old,d.rmId]); toast("บันทึกแล้ว"); render(); });
+  $("#zadd").onclick=async()=>{ const id=$("#zid").value.trim().toUpperCase().replace(/\s+/g,"-"), name=$("#zname").value.trim(); if(!id||!name) return toast("กรอกรหัสและชื่อเขต");
+    if(S.zones[id]) return toast("รหัสเขตนี้มีอยู่แล้ว");
+    const d={name,amName:$("#zam").value.trim(),rmId:$("#zrm").value,lineGroupId:"",createdAt:FV.serverTimestamp()};
+    await db.doc("zones/"+id).set(d); S.zones[id]={id,...d}; await syncRMUsers([d.rmId]); S.f.zone=id; toast("เพิ่มเขตแล้ว"); render(); };
+  $("#ssave").onclick=async()=>{ const sla={}; $$("[data-sla]",app).forEach(i=>sla[i.dataset.sla]=Number(i.value)||1);
+    const d={sla,dayStart:+$("#ds").value,dayEnd:+$("#de").value,nightStart:+$("#ns").value,nightEnd:+$("#ne").value,aiThreshold:+$("#th").value,gpsRadiusM:+$("#gr").value,enforceTime:$("#et").checked};
+    await db.doc("settings/main").set(d,{merge:true}); Object.assign(S.settings,d); toast("บันทึกกติกาแล้ว"); };
+}
+
+/* ================= นำเข้า Excel ตามแม่แบบ ================= */
+function xDate(v){ if(!v) return ""; if(v instanceof Date) return new Date(v.getTime()-v.getTimezoneOffset()*60000).toISOString().slice(0,10); if(typeof v==="number"){ const d=new Date(Math.round((v-25569)*86400e3)); return d.toISOString().slice(0,10);} return String(v).slice(0,10); }
+async function importExcel(file, zid, out){
+  if(!file) return; out.innerHTML='<p class="muted">กำลังอ่านไฟล์…</p>';
+  try{
+    const wb=XLSX.read(await file.arrayBuffer(),{cellDates:true});
+    const rows=n=>{ const ws=wb.Sheets[n]; if(!ws) throw new Error(`ไม่พบชีต “${n}” ใช้ไฟล์แม่แบบทะเบียนป้าย`); return XLSX.utils.sheet_to_json(ws,{header:1,defval:"",raw:true}).slice(3); };
+    const str=v=>String(v==null?"":v).trim();
+    const typeCodeOf=v=>{ const n=parseInt(str(v),10); const t=TYPES.find(t=>t.n===n); return t?t.code:null; };
+    const br=rows("สาขา").filter(r=>str(r[0])&&str(r[1]));
+    const pts=rows("จุดป้าย").filter(r=>str(r[1])&&str(r[3])&&str(r[13])!=="แถวตัวอย่าง");
+    const sls=rows("ช่องป้าย").filter(r=>str(r[1])&&str(r[4])&&str(r[21])!=="แถวตัวอย่าง");
+    const report=[], ops=[], now=FV.serverTimestamp(); const okBranch=new Set();
+    const zoneOfBranch=code=>S.branches[code]?S.branches[code].zoneId:null;
+    for(const r of br){ const code=str(r[0]); const z=zoneOfBranch(code);
+      if(z&&z!==zid){ report.push(`ข้ามสาขา ${code}: อยู่ในเขต ${z}`); continue; } okBranch.add(code);
+      ops.push([db.doc("branches/"+code),{zoneId:zid,name:str(r[1]),format:str(r[2])||"Lotus's",updatedAt:now},"merge"]); }
+    const pointIds=new Set(), ptInfo={};
+    for(const r of pts){ const code=str(r[1]); if(!okBranch.has(code)&&zoneOfBranch(code)!==zid){ report.push(`ข้ามจุดของสาขา ${code}: ไม่ใช่สาขาในเขตนี้`); continue; }
+      const tc=typeCodeOf(r[3]); if(!tc){ report.push(`ข้ามแถวจุด: ประเภทป้าย “${str(r[3])}” ไม่ถูกต้อง`); continue; }
+      const sn=parseInt(r[4],10)||1, side=str(r[5])||"-", id=pointIdOf(code,tc,sn,side);
+      pointIds.add(id); ptInfo[id]={branch:code,typeCode:tc};
+      ops.push([db.doc("points/"+id),{branch:code,zoneId:zid,typeCode:tc,structNo:sn,side,sideName:str(r[6]),road:str(r[7]),direction:str(r[8]),lit:str(r[9])==="มีไฟ",
+        slotCount:parseInt(r[10],10)||0,status:"approved",source:"import",createdBy:S.me.email,updatedAt:now},"merge"]); }
+    const maxRC={}; let nSlot=0;
+    for(const r of sls){ const pid=str(r[1]); const info=ptInfo[pid]||(S.points[pid]&&S.points[pid].zoneId===zid?S.points[pid]:null);
+      if(!info){ report.push(`ข้ามช่อง ${pid}: ไม่พบรหัสจุดในไฟล์หรือในระบบ`); continue; }
+      const no=parseInt(r[4],10); if(!no){ report.push(`ข้ามช่องของ ${pid}: ไม่มีลำดับช่อง`); continue; }
+      const row=parseInt(r[5],10)||1, col=parseInt(r[6],10)||no; const id=slotIdOf(pid,no);
+      maxRC[pid]={rows:Math.max(row,(maxRC[pid]||{}).rows||1),cols:Math.max(col,(maxRC[pid]||{}).cols||1)};
+      const cond=COND.includes(str(r[19]))?str(r[19]):"ยังไม่ตรวจ", contract=CONTRACT.includes(str(r[12]))?str(r[12]):"ไม่ทราบสถานะ-รอตรวจสอบ";
+      ops.push([db.doc("slots/"+id),{pointId:pid,branch:info.branch,zoneId:zid,typeCode:info.typeCode,no,row,col,w:Number(r[7])||null,h:Number(r[8])||null,lit:str(r[10])==="มีไฟ",
+        tenant:str(r[11]),contract,unit:str(r[13]),rent:r[14]===""?null:Number(r[14]),start:xDate(r[15]),end:xDate(r[16]),install:xDate(r[17]),condition:cond,contentExpiry:xDate(r[20]),note:str(r[21]),source:"import",updatedAt:now},"merge"]);
+      nSlot++; }
+    Object.entries(maxRC).forEach(([pid,v])=>ops.push([db.doc("points/"+pid),v,"merge"]));
+    out.innerHTML=`<p>พบ สาขา ${okBranch.size} · จุด ${pointIds.size} · ช่อง ${nSlot}</p>${report.length?`<details><summary>ข้าม ${report.length} รายการ</summary><ul class="muted">${report.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></details>`:""}
+      <div class="row" style="justify-content:flex-end"><button class="pri" id="xgo" ${ops.length?"":"disabled"}>นำเข้า</button></div>`;
+    $("#xgo",out).onclick=async e=>{ busy(e.target,true,"กำลังนำเข้า…"); try{ await commitOps(ops); await loadAll(); toast("นำเข้าเสร็จแล้ว"); render(); }catch(err){ busy(e.target,false); toast(err.message,6000);} };
+  }catch(err){ out.innerHTML=`<p class="red">${esc(err.message)}</p>`; }
+}
+
+/* ================= เข้าสู่ระบบ ================= */
+function viewLogin(msg){
+  $("#hdr").hidden=true;
+  const tiles=["ok","fill","ok","bad","empty","ok","ok","warn","ok"].map(c=>`<div class="tile c-${c}${c==="empty"?" empty":""}" style="min-width:46px;min-height:30px"></div>`).join("");
+  $("#app").style.padding="0"; $("#app").style.maxWidth="none";
+  $("#app").innerHTML=`<div class="login-wrap"><div class="login-top"><div class="pylon" aria-hidden="true"><div class="pgrid" style="grid-template-columns:repeat(3,46px)">${tiles}</div></div><div class="legs" style="width:120px" aria-hidden="true"><i></i><i></i></div>
+    <h1>${esc(C.appName||"ตรวจป้าย")}</h1><p>ติดตามสภาพป้ายร้านค้า Pylon อาคาร และป้ายไฟ</p>
+    <div class="brands"><span class="fmt fmt-lotus">Lotus's</span><span class="fmt fmt-makro">Makro</span><span class="fmt fmt-talad">Talad Super</span></div></div>
+    <div class="login-card">${msg?`<div class="card" style="text-align:left">${msg}</div>`:""}<button class="pri" id="gl" style="width:100%;min-height:52px;font-size:17px">เข้าสู่ระบบด้วย Gmail</button>
+    <p class="muted" style="text-align:center;margin:14px 0 0">ใช้ Gmail ที่ AM ของเขตเพิ่มสิทธิ์ไว้แล้ว · v${VERSION}</p></div></div>`;
+  $("#gl").onclick=()=>auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e=>{ if(e.code==="auth/popup-blocked"||e.code==="auth/operation-not-supported-in-this-environment") auth.signInWithRedirect(new firebase.auth.GoogleAuthProvider()); else toast(e.message,5000); });
+}
+$("#logout").innerHTML=IC.out; $("#logout").onclick=()=>auth.signOut();
+auth.onAuthStateChanged(async u=>{
+  S.user=u; S.me=null;
+  if(!u) return viewLogin();
+  const email=u.email.toLowerCase();
+  try{
+    let d=await db.doc("users/"+email).get();
+    if(!d.exists&&(C.superAdmins||[]).map(x=>x.toLowerCase()).includes(email)){ await db.doc("users/"+email).set({name:u.displayName||"",role:"super",zoneId:"",branches:[],active:true,createdAt:FV.serverTimestamp()}); d=await db.doc("users/"+email).get(); }
+    if(!d.exists||!d.data().active) return viewLogin(`บัญชี <b>${esc(email)}</b> ยังไม่ได้รับสิทธิ์ใช้งาน ส่ง Gmail นี้ให้ AM ของเขตเพื่อเพิ่มสิทธิ์ <div style="margin-top:8px"><button onclick="auth.signOut()">ใช้ Gmail อื่น</button></div>`);
+    S.me={email,...d.data()};
+    if(!S.me.branches) S.me.branches=[];
+    $("#hdr").hidden=false; $("#app").style.padding=""; $("#app").style.maxWidth=""; $("#appname").textContent=C.appName||"ตรวจป้าย";
+    $("#who").textContent=`${S.me.name||email} · ${ROLE_TH[S.me.role]||""}${S.me.zoneId?" · "+S.me.zoneId:S.me.rmId?" · "+S.me.rmId:""}`;
+    $("#app").innerHTML='<div class="empty-state">กำลังโหลดข้อมูล…</div>';
+    await loadAll();
+    if((S.me.role==="branch"||S.me.role==="manager")&&S.me.branches.length===1&&!location.hash.replace(/^#\/?/,"")) return go("branch/"+S.me.branches[0]);
+    render();
+  }catch(e){ console.error(e); viewLogin(`โหลดข้อมูลไม่สำเร็จ: ${esc(e.message)}`); }
+});
+</script>
+</body>
+</html>
