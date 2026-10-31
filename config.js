@@ -3,13 +3,13 @@
 // 2) ใส่ Gmail ของ Super Admin (ต้องตรงกับในไฟล์ firestore.rules)
 window.APP_CONFIG = {
   firebase: {
-    apiKey: "ใส่ค่า",
-    authDomain: "ใส่ค่า.firebaseapp.com",
-    projectId: "ใส่ค่า",
-    storageBucket: "ใส่ค่า.appspot.com",
-    messagingSenderId: "ใส่ค่า",
-    appId: "ใส่ค่า"
+     apiKey: "AIzaSyAiJzDQO_OVef5VSbj-_VuoNp3FGCXEwho",
+  authDomain: "lotus-sign-tracker.firebaseapp.com",
+  projectId: "lotus-sign-tracker",
+  storageBucket: "lotus-sign-tracker.firebasestorage.app",
+  messagingSenderId: "159069199677",
+  appId: "1:159069199677:web:257e4fe2d5e0de167cf954
   },
-  superAdmins: ["your.gmail@gmail.com"],
+  superAdmins: ["ppunnapatt@gmail.com"],
   appName: "ตรวจป้าย Lotus's"
 };
