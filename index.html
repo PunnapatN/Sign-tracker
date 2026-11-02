@@ -191,6 +191,7 @@ h2{font-size:19px;font-weight:700;margin:26px 0 10px}
 .empty-state{text-align:center;padding:34px 12px;color:var(--ink2)}
 .check{display:flex;gap:8px;align-items:center;font-size:15px;margin:6px 14px 6px 0;font-weight:400;color:var(--ink)}
 .check input{width:20px;height:20px;min-height:0;accent-color:var(--lotus)}
+.check{flex-wrap:wrap}.check>.red{flex-basis:100%;padding-left:28px;margin-top:-4px}
 details summary{cursor:pointer}
 /* ตัวกรอง + ผู้ใช้ */
 .filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
@@ -244,7 +245,7 @@ button.ghost{border-color:transparent;background:transparent;color:var(--lotus-d
 <script>
 "use strict";
 /* ================= ค่าคงที่ ================= */
-const VERSION = "1.4.1";
+const VERSION = "1.5.0";
 /* ===== ตรวจปัญหาการเริ่มระบบ: แสดงสาเหตุบนหน้าจอแทนการค้างที่ "กำลังโหลด" ===== */
 let BOOTED=false, BOOTMSG=false;
 function bootError(title, detail){
@@ -276,14 +277,17 @@ const TYPES = [
 ];
 const TYPE = Object.fromEntries(TYPES.map(t=>[t.code,t]));
 const SIDES = ["A","B","C","D","D1","D2","D3","D4","D5","D6","-"];
-const CONTRACT = ["มีสัญญา-มีค่าเช่า","มีสัญญา-0 บาท","ไม่มีสัญญา-ติดฟรี (ทดแทน)","ไม่ทราบสถานะ-รอตรวจสอบ","ว่าง"];
+const CONTRACT = ["มีสัญญา-มีค่าเช่า","มีสัญญา-0 บาท","ไม่มีสัญญา-ติดฟรี (ทดแทน)","ไม่มีสัญญา (ต้องทำสัญญา)","ไม่ทราบสถานะ-รอตรวจสอบ","ว่าง"];
+const NO_CONTRACT="ไม่มีสัญญา (ต้องทำสัญญา)";
 const COND = ["ปกติ","ซีดจาง","หลุด/ขาด","ไฟดับทั้งป้าย","ไฟดับบางส่วน","ป้ายร้านเก่า (ร้านออกแล้ว)","ป้ายไม่ตรงทะเบียน","ว่าง (ขาวโล่ง)","ป้ายทดแทน","ยังไม่ตรวจ"];
-const COND_CLS = {"ปกติ":"ok","ซีดจาง":"warn","ไฟดับบางส่วน":"warn","ป้ายไม่ตรงทะเบียน":"warn","หลุด/ขาด":"bad","ไฟดับทั้งป้าย":"bad","ป้ายร้านเก่า (ร้านออกแล้ว)":"bad","ว่าง (ขาวโล่ง)":"empty","ป้ายทดแทน":"fill","ยังไม่ตรวจ":"none"};
+const COND_CLS = {"ไม่มีสัญญา":"warn","ปกติ":"ok","ซีดจาง":"warn","ไฟดับบางส่วน":"warn","ป้ายไม่ตรงทะเบียน":"warn","หลุด/ขาด":"bad","ไฟดับทั้งป้าย":"bad","ป้ายร้านเก่า (ร้านออกแล้ว)":"bad","ว่าง (ขาวโล่ง)":"empty","ป้ายทดแทน":"fill","ยังไม่ตรวจ":"none"};
 const NO_TICKET = ["ปกติ","ป้ายทดแทน","ยังไม่ตรวจ"];
 const DEFAULT_SETTINGS = {
-  sla:{"หลุด/ขาด":1,"ไฟดับทั้งป้าย":3,"ว่าง (ขาวโล่ง)":3,"ป้ายร้านเก่า (ร้านออกแล้ว)":7,"ไฟดับบางส่วน":7,"ป้ายไม่ตรงทะเบียน":7,"ซีดจาง":30},
-  dayStart:8, dayEnd:17, nightStart:19, nightEnd:24, enforceTime:true, aiThreshold:0.7, gpsRadiusM:1500, alwaysReview:true
+  sla:{"ว่าง (ขาวโล่ง)":60,"ไม่มีสัญญา":30,"หลุด/ขาด":60,"ซีดจาง":60,"ไฟดับทั้งป้าย":21,"ไฟดับบางส่วน":21,"ป้ายร้านเก่า (ร้านออกแล้ว)":30,"ป้ายไม่ตรงทะเบียน":30},
+  dayStart:8, dayEnd:17, nightStart:19, nightEnd:22, enforceTime:true, roundStart:15, roundEnd:20, enforceRound:true, progressDays:7, gpsRadiusM:1500
 };
+const SLA_TH={"ว่าง (ขาวโล่ง)":"ป้ายว่างขาว","ไม่มีสัญญา":"ป้ายไม่มีสัญญา","หลุด/ขาด":"ป้ายชำรุด (หลุด/ขาด)","ซีดจาง":"ป้ายซีด","ไฟดับทั้งป้าย":"ไฟชำรุด: ดับทั้งป้าย","ไฟดับบางส่วน":"ไฟชำรุด: ดับบางส่วน","ป้ายร้านเก่า (ร้านออกแล้ว)":"ป้ายร้านเก่า","ป้ายไม่ตรงทะเบียน":"ป้ายไม่ตรงทะเบียน"};
+const LIT_NOTE='<span class="red" style="font-size:13px">(ป้ายออกไฟ ไม่นับไฟ Track light ที่โครงสร้าง)</span>';
 const ROLE_TH = {super:"Super Admin", viewer:"ผู้บริหาร", rm:"RM", am:"AM", manager:"ผู้จัดการศูนย์", branch:"พนักงานสาขา"};
 const ROLE_ORDER = ["super","viewer","rm","am","manager","branch"];
 
@@ -448,18 +452,23 @@ async function callScript(zoneId, payload){
   if(!j.ok) throw new Error(j.error||"อัปโหลดไม่สำเร็จ");
   return j;
 }
-/* ส่งภาพ 1 ช่องไปเก็บ + ให้ AI ตรวจ */
-async function analyzeSlot(slot, shift, photo, opts={}){
-  const baseId = opts.noBaseline ? null : (shift==="night"?slot.baseFileIdNight:slot.baseFileIdDay);
-  const j=await callScript(slot.zoneId,{action:"inspect", image:photo.full, branch:slot.branch, name:`${slot.id}_${shift}`, month:monthKey(),
-    baseFileId:baseId||"", shift, signType:typeOf(slot).name, expectedTenant:opts.expectedTenant!=null?opts.expectedTenant:(slot.tenant||""), lit:!!slot.lit});
-  return {fileId:j.fileId, url:j.url, ai:j.ai||{}, hadBaseline:!!baseId};
+/* ส่งภาพ 1 ช่องไปเก็บใน Drive ของ AM (ไม่มี AI) */
+async function uploadSlot(slot, shift, photo, tag){
+  const j=await callScript(slot.zoneId,{action:"upload", image:photo.full, branch:slot.branch, name:`${slot.id}_${tag||shift}`, month:monthKey()});
+  return {fileId:j.fileId, url:j.url};
 }
-const aiOK = ai => !S.settings.alwaysReview && ai && ai.category==="ปกติ" && Number(ai.confidence||0)>=S.settings.aiThreshold;
+/* รอบถ่ายภาพรายเดือน (เช่น 15–20) */
+function roundInfo(){ const st=S.settings, t=new Date(Date.now()+7*3600e3), d=t.getUTCDate();
+  return {d, open:!st.enforceRound||(d>=st.roundStart&&d<=st.roundEnd), before:d<st.roundStart, after:d>st.roundEnd, label:`${st.roundStart}–${st.roundEnd} ${t.toLocaleDateString("th-TH",{month:"short",timeZone:"UTC"})}`}; }
+const slotDone=(s,shift,mk=monthKey())=>shift==="night"?s.nightMonth===mk:s.dayMonth===mk;
+function gpsFlags(b,gps){ const f=[]; if(!gps) f.push("ไม่มี GPS"); else { if(gps.acc>150) f.push(`GPS คลาด ${gps.acc} ม.`);
+  if(b&&b.lat&&b.lng){ const d=haversine(b.lat,b.lng,gps.lat,gps.lng); if(d>(b.radiusM||S.settings.gpsRadiusM)) f.push(`ห่างสาขา ${Math.round(d)} ม.`); } } return f; }
+const progressAge=t=>Math.floor((Date.now()-(toDate(t.lastProgressAt)||toDate(t.createdAt)||new Date()).getTime())/86400e3);
 
 /* ================= โหลดข้อมูล ================= */
 async function loadAll(){
-  const sd=await db.doc("settings/main").get(); S.settings={...DEFAULT_SETTINGS,...(sd.exists?sd.data():{})}; S.settings.sla={...DEFAULT_SETTINGS.sla,...(S.settings.sla||{})};
+  const sd=await db.doc("settings/main").get(); const sv=sd.exists?sd.data():{};
+  S.settings={...DEFAULT_SETTINGS,...(sv.v15?sv:{gpsRadiusM:sv.gpsRadiusM||DEFAULT_SETTINGS.gpsRadiusM})}; S.settings.sla={...DEFAULT_SETTINGS.sla,...(sv.v15?(sv.sla||{}):{})};
   S.rms={}; try{ (await db.collection("rms").get()).forEach(d=>S.rms[d.id]={id:d.id,...d.data()}); }catch(e){}
   S.zones={};
   if(wide()) (await db.collection("zones").get()).forEach(d=>S.zones[d.id]={id:d.id,...d.data()});
@@ -481,7 +490,7 @@ function renderNav(){
   const nRev=Object.values(S.reviews).filter(inFilter).filter(canReview).length, nT=Object.values(S.tickets).filter(inFilter).length;
   const badge=n=>n?`<span class="n">${n}</span>`:"";
   const items=[["","ภาพรวม",IC.home,0]];
-  if(canReviewAny()) items.push(["review","รอยืนยัน",IC.check,nRev]);
+  if(canReviewAny()) items.push(["review","รอตรวจ",IC.check,nRev]);
   items.push(["tickets","ใบงาน",IC.tool,nT]);
   if(canManageUsers()) items.push(["users","ผู้ใช้",IC.users,0]);
   if(isSuper()||isAM()) items.push(["admin","ตั้งค่า",IC.gear,0]);
@@ -531,26 +540,27 @@ async function viewDash(app){
   const slots=Object.values(S.slots).filter(inFilter), pts=Object.values(S.points).filter(inFilter), tks=Object.values(S.tickets).filter(inFilter);
   const bad=s=>!NO_TICKET.includes(s.condition||"ยังไม่ตรวจ");
   const overdue=tks.filter(t=>ticketState(t).lvl>0);
-  const done=pts.filter(p=>p.lastInspection&&p.lastInspection.day===mk).length;
-  const pct=pts.length?Math.round(done/pts.length*100):0;
+  const done=slots.filter(s=>slotDone(s,"day",mk)).length;
+  const pct=slots.length?Math.round(done/slots.length*100):0, rd=roundInfo();
+  const stale=tks.filter(t=>t.status==="open"&&progressAge(t)>S.settings.progressDays);
   const okPct=slots.length?Math.round(slots.filter(s=>s.condition==="ปกติ").length/slots.length*100):0;
-  const k=[["มีปัญหา",slots.filter(bad).length,"alert"],["ใบงานเกินกำหนด",overdue.length,"alert"],["ว่าง (ขาวโล่ง)",slots.filter(s=>s.condition==="ว่าง (ขาวโล่ง)").length,"alert"],
+  const k=[["มีปัญหา",slots.filter(bad).length,"alert"],["ใบงานขาดอัปเดต",stale.length,"alert"],["ใบงานเกินกำหนด",overdue.length,"alert"],["ว่าง (ขาวโล่ง)",slots.filter(s=>s.condition==="ว่าง (ขาวโล่ง)").length,"alert"],
     ["ป้ายทดแทน",slots.filter(s=>s.condition==="ป้ายทดแทน"||s.contract==="ไม่มีสัญญา-ติดฟรี (ทดแทน)").length,""],
-    ["รอสาขาถ่ายใหม่",slots.filter(s=>s.retake).length,"alert"],["สัญญาไม่ทราบสถานะ",slots.filter(s=>s.contract==="ไม่ทราบสถานะ-รอตรวจสอบ").length,"info"],["ถ่ายภาพเดือนนี้",pct+"%",pct>=100?"good":""]];
+    ["รอสาขาถ่ายใหม่",slots.filter(s=>s.retake).length,"alert"],["สัญญาไม่ทราบสถานะ",slots.filter(s=>s.contract==="ไม่ทราบสถานะ-รอตรวจสอบ").length,"info"],["ถ่ายภาพรอบนี้",pct+"%",pct>=100?"good":(rd.after?"alert":"")]];
   const q=(S.q||"").toLowerCase();
   const brs=Object.values(S.branches).filter(inFilter).filter(b=>!q||(b.id+" "+b.name).toLowerCase().includes(q))
     .map(b=>{ const bs=slots.filter(s=>s.branch===b.id), bp=pts.filter(p=>p.branch===b.id), bt=tks.filter(t=>t.branch===b.id);
       return {b,bs,bp,nBad:bs.filter(bad).length,nOver:bt.filter(t=>ticketState(t).lvl>0).length,nEmpty:bs.filter(s=>s.condition==="ว่าง (ขาวโล่ง)").length,
-        done:bp.filter(p=>p.lastInspection&&p.lastInspection.day===mk).length,pend:bp.filter(p=>p.status==="pending").length}; })
+        done:bs.filter(s=>slotDone(s,"day",mk)).length,pend:bp.filter(p=>p.status==="pending"||p.status==="draft").length}; })
     .sort((x,y)=>(y.nOver-x.nOver)||(y.nBad-x.nBad)||x.b.id.localeCompare(y.b.id));
-  const cards=brs.map(r=>{ const p=r.bp.length?Math.round(r.done/r.bp.length*100):0;
+  const cards=brs.map(r=>{ const p=r.bs.length?Math.round(r.done/r.bs.length*100):0;
     return `<button class="bcard" data-b="${esc(r.b.id)}"><div class="top"><div class="grow"><div class="code">${esc(r.b.id)}${wide()?" · "+esc((S.zones[r.b.zoneId]||{}).name||""):""}</div><div class="name">${esc(r.b.name)}</div></div>${fmtBadge(r.b.format)}</div>
       ${healthBar(r.bs)}
       <div class="stats"><div><b>${r.bs.length}</b><span>ช่อง</span></div><div class="${r.nBad?"hot":""}"><b>${r.nBad}</b><span>มีปัญหา</span></div><div class="${r.nOver?"hot":""}"><b>${r.nOver}</b><span>เกินกำหนด</span></div><div class="${r.nEmpty?"hot":""}"><b>${r.nEmpty}</b><span>ว่าง</span></div></div>
-      <div class="row" style="margin-top:10px;font-size:13px;color:var(--ink2)"><span class="grow">ถ่ายภาพเดือนนี้ ${r.bp.length?p+"%":"-"}</span>${r.pend?`<span class="chip c-warn">รออนุมัติผัง ${r.pend}</span>`:""}${r.bs.some(s=>s.retake)?` <span class="chip c-bad">ถ่ายใหม่ ${r.bs.filter(s=>s.retake).length}</span>`:""}</div>
+      <div class="row" style="margin-top:10px;font-size:13px;color:var(--ink2)"><span class="grow ${rd.after&&p<100?"red":""}">ถ่ายภาพรอบนี้ ${r.bs.length?p+"%":"-"}</span>${r.pend?`<span class="chip c-warn">ผังรอดำเนินการ ${r.pend}</span>`:""}${r.bs.some(s=>s.retake)?` <span class="chip c-bad">ถ่ายใหม่ ${r.bs.filter(s=>s.retake).length}</span>`:""}</div>
       <div class="prog"><i style="width:${p}%"></i></div></button>`; }).join("");
   const top=overdue.sort((a,b)=>ticketState(b).over-ticketState(a).over).slice(0,8);
-  app.innerHTML=`${filterBar()}<div class="hero"><div class="t"><b>สภาพป้าย ${esc(scopeLabel())}</b><span>${new Date().toLocaleDateString("th-TH",{month:"long",year:"numeric"})}</span></div>
+  app.innerHTML=`${filterBar()}<div class="card" style="padding:10px 14px;${rd.open?"background:var(--sun-l);border-color:#F0D78A":""}">${IC.cam} รอบถ่ายภาพเดือนนี้ <b>${rd.label}</b> · ${rd.open?"<b>เปิดอยู่</b> ถ่ายภาพป้ายทุกช่องให้ครบ":rd.before?"ยังไม่ถึงรอบ":"ปิดรอบแล้ว"}</div><div class="hero"><div class="t"><b>สภาพป้าย ${esc(scopeLabel())}</b><span>${new Date().toLocaleDateString("th-TH",{month:"long",year:"numeric"})}</span></div>
      <div class="big">${okPct}%<small>ปกติ จาก ${fmt(slots.length)} ช่อง</small></div>${healthBar(slots)}${legendHTML(slots)}</div>
    <div class="kpis">${k.map(([t,v,c])=>`<div class="kpi ${c==="alert"&&!v?"":c}"><span>${t}</span><b>${v}</b></div>`).join("")}</div>
    ${top.length?`<h2>เกินกำหนดนานที่สุด</h2><div class="card" style="padding:6px 16px">${top.map(t=>{const s=ticketState(t);return `<div class="row" style="padding:10px 0;border-bottom:1px solid #EDF2F1"><div class="grow"><b>${esc((S.branches[t.branch]||{}).name||t.branch)}</b> <span class="muted">${esc(t.slotId)}</span><div>${chip(t.category)}</div></div><div class="red" style="text-align:right">${s.over} วัน<div class="muted" style="font-weight:400">${s.txt}</div></div></div>`;}).join("")}</div>`:""}
@@ -584,24 +594,31 @@ function pylonHTML(p, slots, curKey){
 }
 async function viewBranch(app, code){
   const b=S.branches[code]; if(!b){ app.innerHTML=`<div class="card">ไม่พบสาขา ${esc(code)}</div>`; return; }
-  const mk=monthKey(); const pts=Object.values(S.points).filter(p=>p.branch===code).sort((a,b)=>(a.typeCode+a.structNo+a.side).localeCompare(b.typeCode+b.structNo+b.side));
+  const mk=monthKey(), rd=roundInfo(), st=S.settings; const pts=Object.values(S.points).filter(p=>p.branch===code).sort((a,b)=>(a.typeCode+a.structNo+a.side).localeCompare(b.typeCode+b.structNo+b.side));
   const canShoot=canShootBranch(code), canEdit=canEditZone(b.zoneId);
   const allS=Object.values(S.slots).filter(s=>s.branch===code);
+  const nightPend=allS.filter(s=>s.lit&&!s.nightMonth||s.lit&&slotDone(s,"day",mk)&&!slotDone(s,"night",mk));
   app.innerHTML=`${crumb("#/","ภาพรวม")}<div class="row"><div class="grow"><div class="muted">${esc(code)} ${fmtBadge(b.format)}</div><h1 style="margin-top:2px">${esc(b.name)}</h1></div>${canShoot?`<button class="sun" id="reg">${IC.plus}ลงทะเบียนผังป้าย</button>`:""}</div>
+  <div class="card" style="padding:10px 14px;${rd.open?"background:var(--sun-l);border-color:#F0D78A":""}">รอบถ่ายภาพเดือนนี้ <b>${rd.label}</b> · ถ่ายแล้ว <b>${allS.filter(s=>slotDone(s,"day",mk)).length}/${allS.length}</b> ป้าย ${rd.open?"":rd.before?"· ยังไม่ถึงรอบ":"· ปิดรอบแล้ว"}</div>
+  ${nightPend.length?`<div class="card" style="padding:10px 14px;background:#E7ECF7;border-color:#C5D0EA">🌙 งานถ่ายกลางคืน <b>${nightPend.length}</b> ป้ายไฟ · ถ่ายได้ ${st.nightStart}:00–${st.nightEnd}:00 น.</div>`:""}
   ${allS.length?`<div class="card">${healthBar(allS)}${legendHTML(allS)}</div>`:""}
-  ${pts.length?"":`<div class="card empty-state">สาขานี้ยังไม่มีผังป้าย ${canShoot?"กด “ลงทะเบียนผังป้ายใหม่” เพื่อเริ่มจากจุดแรก เช่น Pylon ต้นที่ 1 ฝั่ง A":""}</div>`}
-  ${pts.map(p=>{ const ss=Object.values(S.slots).filter(s=>s.pointId===p.id); const li=p.lastInspection||{};
+  ${pts.length?"":`<div class="card empty-state">สาขานี้ยังไม่มีผังป้าย ${canShoot?"กด “ลงทะเบียนผังป้าย” เพื่อเริ่มจากจุดแรก เช่น Pylon ต้นที่ 1 ฝั่ง A":""}</div>`}
+  ${pts.map(p=>{ const ss=Object.values(S.slots).filter(s=>s.pointId===p.id), lit=ss.filter(s=>s.lit), dd=ss.filter(s=>slotDone(s,"day",mk)).length, nd=lit.filter(s=>slotDone(s,"night",mk)).length;
+    const rt=ss.filter(s=>s.retake), draft=p.status==="draft";
     return `<div class="card"><div class="pt"><div>${pylonHTML(p,ss)}</div><div>
-      <div class="row pinfo"><b class="grow">${esc(p.sideName||p.id)}</b>${p.status==="pending"?'<span class="chip c-warn">รออนุมัติผัง</span>':""}</div><div class="muted">${esc(p.id)}</div>
+      <div class="row pinfo"><b class="grow">${esc(p.sideName||p.id)}</b>${draft?'<span class="chip c-warn">ร่าง ลงทะเบียนไม่เสร็จ</span>':p.status==="pending"?'<span class="chip c-warn">รออนุมัติผัง</span>':""}</div><div class="muted">${esc(p.id)}</div>
       <div class="muted">${[p.road,p.direction].filter(Boolean).map(esc).join(" · ")}</div>
-      <div class="status-line">กลางวัน: ${li.day===mk?'<span class="chip c-ok">ถ่ายแล้วเดือนนี้</span>':'<span class="chip c-bad">ยังไม่ถ่ายเดือนนี้</span>'}
-      ${p.lit?` กลางคืน: ${li.night===mk?'<span class="chip c-ok">ถ่ายแล้ว</span>':'<span class="chip c-bad">ยังไม่ถ่าย</span>'}`:""}</div>
-      ${(()=>{ const rt=ss.filter(s=>s.retake); return rt.length?`<div class="card" style="background:var(--bad-bg);border-color:#F3B4B6;margin:0 0 10px;padding:10px 12px"><b class="red">ต้องถ่ายใหม่ ${rt.length} ช่อง</b><div class="muted" style="color:var(--bad)">${rt.map(s=>`${String(s.no).padStart(2,"0")}: ${esc(s.retake.reason||"")}`).join("<br>")}</div>${canShoot?`<button class="dan" data-retake="${esc(p.id)}" style="margin-top:8px">${IC.cam}ถ่ายใหม่เฉพาะช่องนี้</button>`:""}</div>`:""; })()}
-      <div class="row">${canShoot?`<button class="sun" data-insp="${esc(p.id)}">${IC.cam}ถ่ายภาพตรวจ</button>`:""}<button data-ov="${esc(p.id)}">ภาพรวมล่าสุด</button>
-      ${canEdit&&p.status==="pending"?`<button data-appr="${esc(p.id)}">อนุมัติผัง</button>`:""}${canEdit?`<button data-ep="${esc(p.id)}">แก้ไขจุด</button>`:""}</div>
+      ${draft?`<p>ถ่ายแล้ว ${ss.length} จาก ${(p.regions||[]).length} ป้าย</p>${canShoot?`<button class="sun" data-resume="${esc(p.id)}">${IC.cam}ทำต่อ</button>`:""}`:`
+      <div class="status-line">กลางวัน: <span class="chip ${dd>=ss.length&&ss.length?"c-ok":"c-bad"}">${dd}/${ss.length}</span>
+      ${lit.length?` กลางคืน: <span class="chip ${nd>=lit.length?"c-ok":"c-bad"}">${nd}/${lit.length}</span>`:""}</div>
+      ${rt.length?`<div class="card" style="background:var(--bad-bg);border-color:#F3B4B6;margin:0 0 10px;padding:10px 12px"><b class="red">ต้องถ่ายใหม่ ${rt.length} ช่อง</b><div class="muted" style="color:var(--bad)">${rt.map(s=>`${String(s.no).padStart(2,"0")}: ${esc(s.retake.reason||"")}`).join("<br>")}</div>${canShoot?`<button class="dan" data-retake="${esc(p.id)}" style="margin-top:8px">${IC.cam}ถ่ายใหม่เฉพาะช่องนี้</button>`:""}</div>`:""}
+      <div class="row">${canShoot?`<button class="sun" data-insp="${esc(p.id)}">${IC.cam}${dd>0&&dd<ss.length?`ทำต่อ (เหลือ ${ss.length-dd})`:"ถ่ายภาพรอบเดือน"}</button>`:""}<button data-ov="${esc(p.id)}">ภาพรวมล่าสุด</button>
+      ${canEdit&&p.status==="pending"?`<button data-appr="${esc(p.id)}">อนุมัติผัง</button>`:""}${canEdit?`<button data-ep="${esc(p.id)}">แก้ไขจุด</button>`:""}</div>`}
+      <p class="muted" style="margin:8px 0 0">แตะที่ป้ายบนผังเพื่อดูหรือแก้ไขป้ายนั้น</p>
     </div></div></div>`; }).join("")}`;
   const r=$("#reg"); if(r) r.onclick=()=>go("register/"+code);
   $$("[data-insp]",app).forEach(x=>x.onclick=()=>go("inspect/"+x.dataset.insp));
+  $$("[data-resume]",app).forEach(x=>x.onclick=()=>go("register/"+code+"/"+x.dataset.resume));
   $$("[data-retake]",app).forEach(x=>x.onclick=()=>go("inspect/"+x.dataset.retake+"/retake"));
   $$("[data-slot]",app).forEach(x=>x.onclick=()=>slotModal(x.dataset.slot));
   $$("[data-ov]",app).forEach(x=>x.onclick=()=>overviewModal(x.dataset.ov));
@@ -614,26 +631,51 @@ async function overviewModal(pid){
   $("[data-c]",m.el).onclick=m.close;
 }
 async function slotModal(id){
-  const s=S.slots[id]; const edit=canEditZone(s.zoneId);
+  const s=S.slots[id]; const am=canEditZone(s.zoneId), staff=canShootBranch(s.branch);
   const th=await db.doc("thumbs/"+id).get().then(d=>d.exists?d.data():{}).catch(()=>({}));
-  const f=(k,l,type="text")=>`<label>${l}</label><input data-k="${k}" type="${type}" value="${esc(s[k]==null?"":s[k])}" ${edit?"":"disabled"}>`;
-  const sel=(k,l,opts)=>`<label>${l}</label><select data-k="${k}" ${edit?"":"disabled"}>${opts.map(o=>`<option ${s[k]===o?"selected":""}>${esc(o)}</option>`).join("")}</select>`;
+  const can=k=>am||(staff&&["tenant","w","h","lit"].includes(k));
+  const f=(k,l,type="text")=>`<label>${l}</label><input data-k="${k}" type="${type}" value="${esc(s[k]==null?"":s[k])}" ${can(k)?"":"disabled"}>`;
+  const sel=(k,l,opts)=>`<label>${l}</label><select data-k="${k}" ${can(k)?"":"disabled"}>${opts.map(o=>`<option ${s[k]===o?"selected":""}>${esc(o)}</option>`).join("")}</select>`;
   const img=(k,cap,u)=>th[k]?`<figure><img src="${th[k]}" alt="${cap}"><figcaption>${cap}${s[u]?` · <a href="${esc(s[u])}" target="_blank" rel="noopener">ภาพเต็ม</a>`:""}</figcaption></figure>`:"";
-  const m=modal(`<h2 style="margin-top:0">${esc(id)}</h2><p>${chip(s.condition)} <span class="muted">ตรวจล่าสุด ${dTH(s.lastInspectedAt)}</span></p>
+  const nb=dir=>Object.values(S.slots).find(x=>x.pointId===s.pointId&&x.id!==id&&(dir==="r"?(x.row===s.row&&(x.rowSpan||1)===(s.rowSpan||1)&&x.col===s.col+(s.colSpan||1)):(x.col===s.col&&(x.colSpan||1)===(s.colSpan||1)&&x.row===s.row+(s.rowSpan||1))));
+  const nR=nb("r"), nD=nb("d");
+  const m=modal(`<h2 style="margin-top:0">ป้าย ${String(s.no).padStart(2,"0")} <span class="muted" style="font-size:14px">${esc(id)}</span></h2><p>${chip(s.condition)} <span class="muted">ตรวจล่าสุด ${dTH(s.lastInspectedAt)}</span></p>
    <div class="thumbs">${img("baseDay","ต้นแบบกลางวัน","baseUrlDay")}${img("baseNight","ต้นแบบกลางคืน","baseUrlNight")}${img("last","ล่าสุด","lastUrl")}</div>
-   ${f("tenant","ชื่อร้าน/แบรนด์")}${sel("contract","สถานะสัญญา",CONTRACT)}${f("unit","Unit ใน Simplicity")}${f("rent","ค่าเช่า/เดือน (บาท)","number")}
+   ${staff?`<button data-base style="margin-top:8px">${IC.cam}ถ่ายภาพต้นแบบใหม่ (กลางวัน)</button>`:""}
+   ${f("tenant","ชื่อร้าน/แบรนด์")}
    <div class="row"><div class="grow">${f("w","กว้าง (ซม.)","number")}</div><div class="grow">${f("h","สูง (ซม.)","number")}</div></div>
+   <label class="check"><input type="checkbox" data-k="lit" ${s.lit?"checked":""} ${can("lit")?"":"disabled"}> ป้ายมีไฟ ${LIT_NOTE}</label>
+   ${am?`${sel("contract","สถานะสัญญา",CONTRACT)}${f("unit","Unit ใน Simplicity")}${f("rent","ค่าเช่า/เดือน (บาท)","number")}
    <div class="row"><div class="grow">${f("start","วันเริ่มสัญญา","date")}</div><div class="grow">${f("end","วันสิ้นสุดสัญญา","date")}</div></div>
    <div class="row"><div class="grow">${f("install","วันติดตั้งป้าย","date")}</div><div class="grow">${f("contentExpiry","วันหมดอายุเนื้อหา (Banner)","date")}</div></div>
-   ${sel("condition","สภาพป้าย (แก้ด้วยตนเอง)",COND)}<label class="check"><input type="checkbox" data-k="lit" ${s.lit?"checked":""} ${edit?"":"disabled"}> ป้ายมีไฟ</label>
-   <div class="row" style="justify-content:flex-end;margin-top:12px">${edit?'<button class="dan" data-del>ลบช่อง</button>':""}<span class="grow"></span><button data-c>ปิด</button>${edit?'<button class="pri" data-s>บันทึก</button>':""}</div>`);
+   ${sel("condition","สภาพป้าย (แก้ด้วยตนเอง)",COND)}
+   <label>จัดการผัง</label><div class="row">${nR?`<button data-mg="r">รวมกับป้าย ${String(nR.no).padStart(2,"0")} ด้านขวา</button>`:""}${nD?`<button data-mg="d">รวมกับป้าย ${String(nD.no).padStart(2,"0")} ด้านล่าง</button>`:""}<button class="dan" data-del>ลบป้ายนี้ (ไม่ใช่ป้าย/โครงสร้าง)</button></div>`:`<p class="muted">ข้อมูลสัญญา Unit และค่าเช่า แก้ได้โดย AM</p>`}
+   <div class="row" style="justify-content:flex-end;margin-top:12px"><button data-c>ปิด</button>${(am||staff)?'<button class="pri" data-s>บันทึก</button>':""}</div>`);
   $("[data-c]",m.el).onclick=m.close;
-  if(!edit) return;
-  $("[data-s]",m.el).onclick=async e=>{
-    const u={}; $$("[data-k]",m.el).forEach(i=>{ const k=i.dataset.k; u[k]= i.type==="checkbox"?i.checked : (i.type==="number"? (i.value===""?null:Number(i.value)) : i.value); });
-    busy(e.target,true); try{ await db.doc("slots/"+id).update({...u,updatedAt:FV.serverTimestamp()}); Object.assign(S.slots[id],u); m.close(); toast("บันทึกแล้ว"); render(); }catch(err){ toast(err.message); busy(e.target,false); }
+  const sv=$("[data-s]",m.el); if(sv) sv.onclick=async e=>{
+    const u={}; $$("[data-k]",m.el).forEach(i=>{ if(i.disabled) return; const k=i.dataset.k; u[k]= i.type==="checkbox"?i.checked : (i.type==="number"? (i.value===""?null:Number(i.value)) : i.value); });
+    busy(e.target,true);
+    try{ const b=db.batch(); b.update(db.doc("slots/"+id),{...u,updatedAt:FV.serverTimestamp()});
+      if(am&&u.contract===NO_CONTRACT&&s.contract!==NO_CONTRACT&&!Object.values(S.tickets).some(t=>t.slotId===id&&t.category==="ไม่มีสัญญา")){
+        const sla=S.settings.sla["ไม่มีสัญญา"]||30, ref=db.collection("tickets").doc();
+        const t={slotId:id,pointId:s.pointId,branch:s.branch,zoneId:s.zoneId,category:"ไม่มีสัญญา",shift:"day",tenant:u.tenant||s.tenant||"",slaDays:sla,status:"open",
+          createdAt:TSx.now(),dueAt:TSx.fromDate(addDays(new Date(),sla)),lastProgressAt:TSx.now(),progress:[],createdBy:S.me.email};
+        b.set(ref,t); S.tickets[ref.id]={id:ref.id,...t}; toast("เปิดใบงาน “ป้ายไม่มีสัญญา” 30 วันแล้ว",4000); }
+      await b.commit(); Object.assign(S.slots[id],u); m.close(); toast("บันทึกแล้ว"); render(); }catch(err){ toast(err.message,5000); busy(e.target,false); }
   };
-  $("[data-del]",m.el).onclick=async()=>{ if(!await confirmBox(`ลบช่อง ${id}? ข้อมูลช่องนี้จะหายจากทะเบียน (ภาพใน Drive ยังอยู่)`)) return; await db.doc("slots/"+id).delete(); await db.doc("thumbs/"+id).delete().catch(()=>{}); delete S.slots[id]; m.close(); toast("ลบแล้ว"); render(); };
+  const bb=$("[data-base]",m.el); if(bb) bb.onclick=async e=>{
+    let ph; try{ ph=await takePhoto(`${id} ต้นแบบใหม่`,{mode:"slot",aspect:(s.w&&s.h)?s.w/s.h:null}); }catch(err){ if(err.message!=="cancel") toast(err.message); return; }
+    busy(e.target,true,"กำลังอัปโหลด…");
+    try{ const r=await uploadSlot(s,"day",ph,"baseline"), now=FV.serverTimestamp(), b=db.batch();
+      b.update(db.doc("slots/"+id),{baseFileIdDay:r.fileId,baseUrlDay:r.url,lastFileId:r.fileId,lastUrl:r.url,lastInspectedAt:now,updatedAt:now});
+      b.set(db.doc("thumbs/"+id),{zoneId:s.zoneId,branch:s.branch,baseDay:ph.thumb,last:ph.thumb},{merge:true});
+      b.set(db.collection("inspections").doc(),{slotId:id,pointId:s.pointId,branch:s.branch,zoneId:s.zoneId,shift:"day",month:monthKey(),fileId:r.fileId,url:r.url,thumb:ph.thumb,status:"review",kind:"baseline",flags:gpsFlags(S.branches[s.branch],ph.gps),gps:ph.gps||null,takenBy:S.me.email,takenAt:now});
+      await b.commit(); Object.assign(s,{baseFileIdDay:r.fileId,baseUrlDay:r.url}); m.close(); toast("บันทึกภาพต้นแบบใหม่แล้ว ส่งให้ตรวจ"); await loadAll(); render(); }catch(err){ busy(e.target,false); toast(err.message,5000); } };
+  $$("[data-mg]",m.el).forEach(x=>x.onclick=async()=>{ const o=x.dataset.mg==="r"?nR:nD; if(!await confirmBox(`รวมป้าย ${String(s.no).padStart(2,"0")} กับ ${String(o.no).padStart(2,"0")} เป็นป้ายเดียว? ข้อมูลของป้าย ${String(o.no).padStart(2,"0")} จะถูกลบ`)) return;
+    const u=x.dataset.mg==="r"?{colSpan:(s.colSpan||1)+(o.colSpan||1)}:{rowSpan:(s.rowSpan||1)+(o.rowSpan||1)};
+    const b=db.batch(); b.update(db.doc("slots/"+id),{...u,updatedAt:FV.serverTimestamp()}); b.delete(db.doc("slots/"+o.id)); b.delete(db.doc("thumbs/"+o.id)); await b.commit();
+    Object.assign(s,u); delete S.slots[o.id]; m.close(); toast("รวมป้ายแล้ว"); render(); });
+  const dl=$("[data-del]",m.el); if(dl) dl.onclick=async()=>{ if(!await confirmBox(`ลบป้าย ${id}? ช่องนี้จะไม่ต้องถ่ายภาพอีก (ภาพเดิมใน Drive ยังอยู่)`)) return; await db.doc("slots/"+id).delete(); await db.doc("thumbs/"+id).delete().catch(()=>{}); delete S.slots[id]; m.close(); toast("ลบแล้ว"); render(); };
 }
 function pointModal(pid){
   const p=S.points[pid];
@@ -652,8 +694,9 @@ function pointModal(pid){
 }
 
 /* ================= ลงทะเบียนผังป้าย ================= */
-async function viewRegister(app, code){
+async function viewRegister(app, code, resume){
   const b=S.branches[code]; if(!b||!canShootBranch(code)){ app.innerHTML=`<div class="card">ไม่มีสิทธิ์ลงทะเบียนสาขานี้</div>`; return; }
+  if(resume){ const P=S.points[resume]; if(!P||P.status!=="draft") return go("branch/"+code); return regSlots(app,b,{...P,id:resume}); }
   app.innerHTML=`${crumb("#/branch/"+esc(code),code+" "+b.name)}<h1>ลงทะเบียนผังป้าย</h1>
   <div class="card"><div class="step">ขั้นที่ 1 จาก 3 · ข้อมูลจุดป้าย</div><div class="stepbar"><i class="on"></i><i></i><i></i></div>
    <label>ประเภทป้าย</label><select id="ty">${TYPES.map(t=>`<option value="${t.code}">${t.n} ${esc(t.name)}</option>`).join("")}</select>
@@ -668,7 +711,7 @@ async function viewRegister(app, code){
    <label>ผังช่องป้าย (แตะเลือกช่องที่ติดกัน แล้วกดรวม)</label><div id="lay" class="lay"></div>
    <div class="row"><button id="lmerge">รวมช่องที่เลือก</button><button id="lnone">ไม่มีป้ายตรงนี้</button><button id="lreset" class="ghost">เริ่มผังใหม่</button></div>
    <p class="muted" id="laymsg">เช่น ป้าย 4 แถว 2 คอลัมน์ แต่แถวบนเป็นป้ายเดียว ให้แตะ 2 ช่องบนสุด แล้วกด “รวมช่องที่เลือก”</p>
-   <label class="check"><input type="checkbox" id="lit"> จุดนี้มีป้ายไฟ</label>
+   <label class="check"><input type="checkbox" id="lit"> จุดนี้มีป้ายไฟ ${LIT_NOTE}</label>
    <p id="pidPrev" class="muted"></p>
    <div class="row" style="justify-content:flex-end"><button class="pri" id="go">${IC.cam}ถ่ายภาพรวมของจุดนี้</button></div></div>`;
   const prev=()=>{ const id=pointIdOf(code,$("#ty").value,$("#sn").value||"?",$("#sd").value); $("#pidPrev").textContent="รหัสจุด: "+id+(S.points[id]?" (มีอยู่แล้ว)":""); };
@@ -710,7 +753,11 @@ async function viewRegister(app, code){
     if(!checkGPS(b,ov.gps)) return;
     try{ if((await db.doc("points/"+P.id).get()).exists) return toast("รหัสจุดนี้มีอยู่แล้ว ใช้ปุ่มถ่ายภาพตรวจของจุดเดิม หรือเปลี่ยนลำดับ/ฝั่ง",5000); }catch(e){}
     const btn=$("#go"); busy(btn,true,"กำลังอัปโหลดภาพรวม…");
-    try{ const j=await callScript(b.zoneId,{action:"upload",image:ov.full,branch:code,name:`${P.id}_overview_day`,month:monthKey()}); P.overview={fileId:j.fileId,url:j.url,thumb:ov.thumb}; }
+    try{ const j=await callScript(b.zoneId,{action:"upload",image:ov.full,branch:code,name:`${P.id}_overview_day`,month:monthKey()});
+      const now=FV.serverTimestamp(), mk=monthKey(), point={branch:P.branch,zoneId:P.zoneId,typeCode:P.typeCode,structNo:P.structNo,side:P.side,sideName:P.sideName,road:P.road,direction:P.direction,
+        rows:P.rows,cols:P.cols,lit:P.lit,regions:P.regions,slotCount:0,status:"draft",createdBy:S.me.email,createdAt:now,updatedAt:now,lastInspection:{dayOv:mk}};
+      const bt=db.batch(); bt.set(db.doc("points/"+P.id),point); bt.set(db.doc("thumbs/"+P.id),{zoneId:P.zoneId,branch:P.branch,day:ov.thumb,dayUrl:j.url,dayMonth:mk}); await bt.commit();
+      S.points[P.id]={id:P.id,...point,status:"draft"}; }
     catch(e){ busy(btn,false); return toast(e.message,5000); }
     regSlots(app,b,P);
   };
@@ -718,59 +765,62 @@ async function viewRegister(app, code){
 function checkGPS(b, gps){
   if(!(b.lat&&b.lng)) return true;
   if(!gps){ toast("ไม่พบตำแหน่ง GPS เปิดการเข้าถึงตำแหน่งแล้วถ่ายใหม่",5000); return isSuper()||isAM(); }
-  const d=haversine(b.lat,b.lng,gps.lat,gps.lng);
-  if(d>S.settings.gpsRadiusM){ toast(`ตำแหน่งห่างจากสาขา ${Math.round(d)} ม. เกินที่กำหนด ${S.settings.gpsRadiusM} ม.`,5000); return isSuper()||isAM(); }
+  const d=haversine(b.lat,b.lng,gps.lat,gps.lng), R=b.radiusM||S.settings.gpsRadiusM;
+  if(d>R){ toast(`ตำแหน่งห่างจากสาขา ${Math.round(d)} ม. เกินรัศมี ${R} ม.`,5000); return isSuper()||isAM(); }
   return true;
 }
 const cellLabel=g=>(g.rowSpan||1)*(g.colSpan||1)>1?`ช่องรวม แถว ${g.row}–${g.row+(g.rowSpan||1)-1} คอลัมน์ ${g.col}–${g.col+(g.colSpan||1)-1}`:`แถว ${g.row} คอลัมน์ ${g.col}`;
 function regSlots(app,b,P){
-  const cells=P.regions;
-  let i=0, no=0; const done=[]; let last={w:"",h:"",lit:P.lit};
+  const regions=(P.regions||[]).slice().sort((a,c)=>a.row-c.row||a.col-c.col), mk=monthKey();
+  const slotsOf=()=>Object.values(S.slots).filter(s=>s.pointId===P.id);
+  const doneAt=g=>slotsOf().some(s=>s.row===g.row&&s.col===g.col);
+  const queue=regions.filter(g=>!doneAt(g)); let qi=0; let last={w:"",h:"",lit:P.lit};
   const step=()=>{
-    if(i>=cells.length) return regSave(app,b,P,done);
-    const cell=cells[i], tmp=done.map(d=>({...d,condition:d.ai&&d.ai.category||"ยังไม่ตรวจ"})).concat(cells.slice(i).map(g=>({...g,pending:true})));
-    app.innerHTML=`<h1>ลงทะเบียน ${esc(P.id)}</h1><div class="card"><div class="stepbar"><i class="on"></i><i class="on"></i><i></i></div><div class="step">ขั้นที่ 2 จาก 3 · ${cellLabel(cell)} (${i+1}/${cells.length})</div>
+    const left=regions.filter(g=>!doneAt(g)); if(qi>=queue.length||!left.length) return regSave(app,b,P);
+    const cell=queue[qi]; if(doneAt(cell)){ qi++; return step(); }
+    const idx=regions.indexOf(cell), sNo=idx+1;
+    const tmp=slotsOf().concat(regions.filter(g=>!doneAt(g)).map(g=>({...g,pending:true})));
+    app.innerHTML=`<h1>ลงทะเบียน ${esc(P.id)}</h1><div class="card"><div class="stepbar"><i class="on"></i><i class="on"></i><i></i></div><div class="step">ขั้นที่ 2 จาก 3 · ป้าย ${String(sNo).padStart(2,"0")} · ${cellLabel(cell)} · ถ่ายแล้ว ${regions.length-left.length}/${regions.length}</div>
       <div style="margin:10px 0">${pylonHTML({...P},tmp,`${cell.row}-${cell.col}`)}</div>
       <div class="row"><div class="grow"><label>กว้าง (ซม.)</label><input id="w" type="number" value="${esc(last.w)}"></div><div class="grow"><label>สูง (ซม.)</label><input id="h" type="number" value="${esc(last.h)}"></div></div>
       <label>ชื่อร้าน/แบรนด์ที่เห็นบนป้าย (ไม่ทราบให้เว้นว่าง)</label><input id="tn">
-      <label class="check"><input type="checkbox" id="sl" ${last.lit?"checked":""}> ช่องนี้มีไฟ</label>
-      <div id="res" class="muted"></div>
-      <div class="row" style="margin-top:10px"><button id="skip">ข้ามช่องนี้</button><span class="grow"></span><button class="pri" id="shot">${IC.cam}ถ่ายภาพช่องนี้</button></div></div>`;
-    $("#skip").onclick=()=>{ i++; step(); };
+      <label class="check"><input type="checkbox" id="sl" ${last.lit?"checked":""}> ป้ายนี้มีไฟ ${LIT_NOTE}</label>
+      <div class="row" style="margin-top:10px"><button id="skip">ข้ามไปก่อน</button><button id="later">บันทึกไว้ทำต่อ</button><span class="grow"></span><button class="sun" id="shot">${IC.cam}ถ่ายภาพป้ายนี้</button></div></div>`;
+    $("#skip").onclick=()=>{ qi++; step(); };
+    $("#later").onclick=()=>{ toast("บันทึกแล้ว กลับมากด “ทำต่อ” ที่หน้าสาขาได้",4000); go("branch/"+b.id); };
     $("#shot").onclick=async e=>{
       let ph; try{ ph=await takePhoto(`${P.id} ${cellLabel(cell)}`,{mode:"slot",aspect:(+$("#w").value&&+$("#h").value)?(+$("#w").value)/(+$("#h").value):null}); }catch(err){ if(err.message!=="cancel") toast(err.message); return; }
-      busy(e.target,true,"กำลังอัปโหลดและให้ AI ตรวจ…");
-      const sNo=no+1, sid=slotIdOf(P.id,sNo);
-      const slot={id:sid, pointId:P.id, branch:b.id, zoneId:b.zoneId, typeCode:P.typeCode, no:sNo, row:cell.row, col:cell.col, rowSpan:cell.rowSpan||1, colSpan:cell.colSpan||1,
-        w:$("#w").value?Number($("#w").value):null, h:$("#h").value?Number($("#h").value):null, lit:$("#sl").checked, tenant:$("#tn").value.trim()};
-      try{ const r=await analyzeSlot(slot,"day",ph,{noBaseline:true}); Object.assign(slot,{photo:ph,fileId:r.fileId,url:r.url,ai:r.ai});
-        no++; done.push(slot); last={w:$("#w").value,h:$("#h").value,lit:slot.lit};
-        if(r.ai&&r.ai.category==="ภาพใช้ไม่ได้"){ toast("AI แจ้งว่าภาพใช้ไม่ได้: "+(r.ai.note||"")+" — บันทึกไว้แล้ว และส่งให้ AM ตรวจ",5000); }
-        i++; step();
+      busy(e.target,true,"กำลังอัปโหลด…");
+      const sid=slotIdOf(P.id,sNo), now=FV.serverTimestamp();
+      const slot={pointId:P.id, branch:b.id, zoneId:b.zoneId, typeCode:P.typeCode, no:sNo, row:cell.row, col:cell.col, rowSpan:cell.rowSpan||1, colSpan:cell.colSpan||1,
+        w:$("#w").value?Number($("#w").value):null, h:$("#h").value?Number($("#h").value):null, lit:$("#sl").checked, tenant:$("#tn").value.trim(), contract:"ไม่ทราบสถานะ-รอตรวจสอบ", condition:"ยังไม่ตรวจ"};
+      try{ const r=await uploadSlot({...slot,id:sid},"day",ph,"register");
+        Object.assign(slot,{baseFileIdDay:r.fileId,baseUrlDay:r.url,lastFileId:r.fileId,lastUrl:r.url,lastInspectedAt:now,dayMonth:mk,createdAt:now,updatedAt:now});
+        const bt=db.batch(); bt.set(db.doc("slots/"+sid),slot); bt.set(db.doc("thumbs/"+sid),{zoneId:b.zoneId,branch:b.id,baseDay:ph.thumb,last:ph.thumb});
+        bt.set(db.collection("inspections").doc(),{slotId:sid,pointId:P.id,branch:b.id,zoneId:b.zoneId,shift:"day",month:mk,fileId:r.fileId,url:r.url,thumb:ph.thumb,status:"review",kind:"register",flags:gpsFlags(b,ph.gps),gps:ph.gps||null,takenBy:S.me.email,takenAt:now});
+        await bt.commit(); S.slots[sid]={id:sid,...slot,lastInspectedAt:new Date()}; last={w:$("#w").value,h:$("#h").value,lit:slot.lit}; qi++; step();
       }catch(err){ busy(e.target,false); toast(err.message,5000); }
     };
   };
   step();
 }
-async function regSave(app,b,P,slots){
-  if(!slots.length){ toast("ยังไม่มีช่องป้ายที่ถ่ายภาพ"); return go("branch/"+b.id); }
-  app.innerHTML=`<h1>ลงทะเบียน ${esc(P.id)}</h1><div class="card"><div class="stepbar"><i class="on"></i><i class="on"></i><i class="on"></i></div><div class="step">ขั้นที่ 3 จาก 3 · ตรวจและบันทึก</div><div style="margin:10px 0">${pylonHTML(P,slots.map(s=>({...s,condition:s.ai&&s.ai.category&&COND.includes(s.ai.category)?s.ai.category:"ยังไม่ตรวจ"})))}</div>
-   <p>${slots.length} ช่อง · ${isAM()||isSuper()?"บันทึกและอนุมัติผังทันที":"บันทึกแล้วรอ AM อนุมัติผัง"}</p><div class="row" style="justify-content:flex-end"><button class="pri" id="save">บันทึกผังป้าย</button></div></div>`;
+async function regSave(app,b,P){
+  const regions=(P.regions||[]).slice().sort((a,c)=>a.row-c.row||a.col-c.col), ss=Object.values(S.slots).filter(s=>s.pointId===P.id);
+  const left=regions.filter(g=>!ss.some(s=>s.row===g.row&&s.col===g.col));
+  app.innerHTML=`<h1>ลงทะเบียน ${esc(P.id)}</h1><div class="card"><div class="stepbar"><i class="on"></i><i class="on"></i><i class="on"></i></div><div class="step">ขั้นที่ 3 จาก 3 · ตรวจและบันทึก</div>
+   <div style="margin:10px 0">${pylonHTML(P,ss.concat(left.map(g=>({...g,pending:true}))))}</div>
+   ${left.length?`<p class="red">ยังไม่ได้ถ่าย ${left.length} ป้าย</p><div class="row"><button class="sun" id="cont">${IC.cam}กลับไปถ่ายต่อ</button><button id="later">บันทึกไว้ทำต่อภายหลัง</button></div>
+     <p class="muted">ถ้าตำแหน่งที่เหลือไม่ใช่ป้าย (เป็นโครงสร้าง) กด “จบ” ระบบจะเอาออกจากผัง</p>`:`<p>${ss.length} ป้าย ครบตามผัง</p>`}
+   <p class="muted">${isAM()||isSuper()?"บันทึกแล้วอนุมัติผังทันที":"บันทึกแล้วรอ AM อนุมัติผัง"}${ss.some(s=>s.lit)?" · ป้ายที่มีไฟ ระบบสร้างงานถ่ายกลางคืนให้อัตโนมัติ":""}</p>
+   <div class="row" style="justify-content:flex-end"><button class="pri" id="save" ${ss.length?"":"disabled"}>จบการลงทะเบียน</button></div></div>`;
+  const c=$("#cont"); if(c) c.onclick=()=>regSlots(app,b,P);
+  const l=$("#later"); if(l) l.onclick=()=>{ toast("บันทึกแล้ว กลับมากด “ทำต่อ” ที่หน้าสาขาได้",4000); go("branch/"+b.id); };
   $("#save").onclick=async e=>{
-    busy(e.target,true,"กำลังบันทึก…"); const now=FV.serverTimestamp(), mk=monthKey(), ops=[];
-    const point={branch:P.branch,zoneId:P.zoneId,typeCode:P.typeCode,structNo:P.structNo,side:P.side,sideName:P.sideName,road:P.road,direction:P.direction,rows:P.rows,cols:P.cols,lit:P.lit,
-      slotCount:slots.length,status:(isAM()||isSuper())?"approved":"pending",createdBy:S.me.email,createdAt:now,updatedAt:now,lastInspection:{day:mk}};
-    ops.push([db.doc("points/"+P.id),point]);
-    ops.push([db.doc("thumbs/"+P.id),{zoneId:P.zoneId,branch:P.branch,day:P.overview.thumb,dayUrl:P.overview.url,dayMonth:mk}]);
-    for(const s of slots){
-      const auto=aiOK(s.ai), cond=auto?"ปกติ":"ยังไม่ตรวจ";
-      ops.push([db.doc("slots/"+s.id),{pointId:s.pointId,branch:s.branch,zoneId:s.zoneId,typeCode:s.typeCode,no:s.no,row:s.row,col:s.col,rowSpan:s.rowSpan||1,colSpan:s.colSpan||1,w:s.w,h:s.h,lit:s.lit,tenant:s.tenant,
-        contract:"ไม่ทราบสถานะ-รอตรวจสอบ",condition:cond,baseFileIdDay:s.fileId,baseUrlDay:s.url,lastFileId:s.fileId,lastUrl:s.url,lastInspectedAt:now,createdAt:now,updatedAt:now}]);
-      ops.push([db.doc("thumbs/"+s.id),{zoneId:s.zoneId,branch:s.branch,baseDay:s.photo.thumb,last:s.photo.thumb}]);
-      ops.push([db.collection("inspections").doc(),{slotId:s.id,pointId:s.pointId,branch:s.branch,zoneId:s.zoneId,shift:"day",month:mk,fileId:s.fileId,url:s.url,thumb:s.photo.thumb,
-        ai:s.ai||{},status:auto?"auto":"review",kind:"register",gps:s.photo.gps||null,takenBy:S.me.email,takenAt:now}]);
-    }
-    try{ await commitOps(ops); toast("บันทึกผังป้ายแล้ว"); await loadAll(); go("branch/"+P.branch); }
+    if(left.length&&!(await confirmBox(`เอา ${left.length} ตำแหน่งที่ยังไม่ได้ถ่ายออกจากผัง (ถือว่าไม่ใช่ป้าย)?`))) return;
+    busy(e.target,true,"กำลังบันทึก…");
+    const keep=regions.filter(g=>ss.some(s=>s.row===g.row&&s.col===g.col));
+    const u={status:(isAM()||isSuper())?"approved":"pending",slotCount:ss.length,regions:keep,lit:ss.some(s=>s.lit),updatedAt:FV.serverTimestamp()};
+    try{ await db.doc("points/"+P.id).update(u); Object.assign(S.points[P.id],u); toast("บันทึกผังป้ายแล้ว"); await loadAll(); go("branch/"+P.branch); }
     catch(err){ busy(e.target,false); toast(err.message,6000); }
   };
 }
@@ -778,74 +828,84 @@ async function regSave(app,b,P,slots){
 /* ================= ถ่ายภาพตรวจรายเดือน ================= */
 async function viewInspect(app, pid, sub){
   const p=S.points[pid]; if(!p||!canShootBranch(p.branch)){ app.innerHTML=`<div class="card">ไม่มีสิทธิ์หรือไม่พบจุด</div>`; return; }
-  const b=S.branches[p.branch], st=S.settings, h=bkkHour(), mk=monthKey(), li=p.lastInspection||{};
+  if(p.status==="draft") return go(`register/${p.branch}/${pid}`);
+  const b=S.branches[p.branch], st=S.settings, h=bkkHour(), mk=monthKey(), rd=roundInfo();
   const dayOK=!st.enforceTime||(h>=st.dayStart&&h<st.dayEnd), nightOK=!st.enforceTime||(h>=st.nightStart&&h<st.nightEnd);
+  const ss=Object.values(S.slots).filter(s=>s.pointId===pid), lit=ss.filter(s=>s.lit);
+  const tmsg=d=>`รอบ${d?"กลางวัน":"กลางคืน"}ถ่ายได้ ${d?st.dayStart:st.nightStart}:00–${d?st.dayEnd:st.nightEnd}:00 น. เท่านั้น`;
+  const head=`${crumb("#/branch/"+esc(p.branch),p.branch+" "+b.name)}`;
   if(sub==="retake"){
-    const rt=Object.values(S.slots).filter(s=>s.pointId===pid&&s.retake), sh=["day","night"].filter(x=>rt.some(s=>s.retake.shift===x));
-    if(!rt.length){ app.innerHTML=`${crumb("#/branch/"+esc(p.branch),p.branch+" "+b.name)}<div class="card empty-state">ไม่มีช่องที่ต้องถ่ายใหม่</div>`; return; }
-    app.innerHTML=`${crumb("#/branch/"+esc(p.branch),p.branch+" "+b.name)}<h1>ถ่ายใหม่</h1><div class="muted" style="margin-top:-8px;margin-bottom:12px">${esc(pid)} · ${rt.length} ช่อง ไม่ต้องถ่ายภาพรวม</div>
-     <div class="card"><div class="row">${sh.map(x=>{ const ok=x==="day"?dayOK:nightOK; return `<button class="sun" data-sh="${x}" data-ok="${ok?1:0}" ${ok?"":'style="opacity:.5"'}>${IC.cam}รอบ${x==="day"?"กลางวัน":"กลางคืน"} (${rt.filter(s=>s.retake.shift===x).length} ช่อง)</button>`; }).join("")}</div></div>`;
-    $$("[data-sh]",app).forEach(x=>x.onclick=()=>{ if(x.dataset.ok!=="1"){ const d=x.dataset.sh==="day"; return toast(`รอบ${d?"กลางวัน":"กลางคืน"}ถ่ายได้ ${d?st.dayStart:st.nightStart}:00–${d?st.dayEnd:st.nightEnd}:00 น. เท่านั้น`,4500); } runInspect(app,p,b,x.dataset.sh,true); });
+    const rt=ss.filter(s=>s.retake), sh=["day","night"].filter(x=>rt.some(s=>s.retake.shift===x));
+    if(!rt.length){ app.innerHTML=`${head}<div class="card empty-state">ไม่มีช่องที่ต้องถ่ายใหม่</div>`; return; }
+    app.innerHTML=`${head}<h1>ถ่ายใหม่</h1><div class="muted" style="margin-top:-8px;margin-bottom:12px">${esc(pid)} · ${rt.length} ป้าย ไม่ต้องถ่ายภาพรวม</div>
+     <div class="card"><div class="row">${sh.map(x=>{ const ok=x==="day"?dayOK:nightOK; return `<button class="sun" data-sh="${x}" data-ok="${ok?1:0}" ${ok?"":'style="opacity:.5"'}>${IC.cam}รอบ${x==="day"?"กลางวัน":"กลางคืน"} (${rt.filter(s=>s.retake.shift===x).length})</button>`; }).join("")}</div></div>`;
+    $$("[data-sh]",app).forEach(x=>x.onclick=()=>{ if(x.dataset.ok!=="1") return toast(tmsg(x.dataset.sh==="day"),4500); runInspect(app,p,b,x.dataset.sh,{retake:true}); });
     return;
   }
-  app.innerHTML=`${crumb("#/branch/"+esc(p.branch),p.branch+" "+b.name)}<h1>ถ่ายภาพตรวจ</h1><div class="muted" style="margin-top:-8px;margin-bottom:12px">${esc(pid)}</div>
-   <div class="card"><p>${esc(typeOf(p).name)} ${esc(p.structNo)} · ${esc(p.sideName||"")} ${p.road?"· "+esc(p.road):""}</p>
-   ${!dayOK&&!(p.lit&&nightOK)?`<div class="card" style="background:var(--sun-l);border-color:#F0D78A;margin:6px 0 10px">ตอนนี้ ${String(Math.floor(h)).padStart(2,"0")}:${String(Math.round((h%1)*60)).padStart(2,"0")} น. อยู่นอกช่วงเวลาถ่ายภาพ</div>`:""}
-   <div class="row"><button class="pri" data-sh="day" data-ok="${dayOK?1:0}" ${dayOK?"":'style="opacity:.5"'}>${IC.cam}รอบกลางวัน${li.day===mk?" (ถ่ายแล้ว ถ่ายซ้ำได้)":""}</button>
-   ${p.lit?`<button class="pri" data-sh="night" data-ok="${nightOK?1:0}" style="background:var(--lotus-dd);border-color:var(--lotus-dd);${nightOK?"":"opacity:.5"}">${IC.cam}รอบกลางคืน${li.night===mk?" (ถ่ายแล้ว ถ่ายซ้ำได้)":""}</button>`:""}</div>
-   <p class="muted">ถ่ายกลางวันได้ ${st.dayStart}:00–${st.dayEnd}:00 น.${p.lit?` · กลางคืน ${st.nightStart}:00–${st.nightEnd}:00 น. (หลังเปิดไฟป้ายแล้ว)`:""}</p></div>`;
-  $$("[data-sh]",app).forEach(x=>x.onclick=()=>{
-    if(x.dataset.ok!=="1"){ const d=x.dataset.sh==="day"; toast(`รอบ${d?"กลางวัน":"กลางคืน"}ถ่ายได้ ${d?st.dayStart:st.nightStart}:00–${d?st.dayEnd:st.nightEnd}:00 น. เท่านั้น`,4500); return; }
-    runInspect(app,p,b,x.dataset.sh); });
+  const dLeft=ss.filter(s=>!slotDone(s,"day",mk)), nLeft=lit.filter(s=>!slotDone(s,"night",mk)&&(slotDone(s,"day",mk)||!s.nightMonth));
+  app.innerHTML=`${head}<h1>ถ่ายภาพรอบเดือน</h1><div class="muted" style="margin-top:-8px;margin-bottom:12px">${esc(pid)} · ${esc(typeOf(p).name)} ${esc(p.structNo)} · ${esc(p.sideName||"")}</div>
+   <div class="card" style="${rd.open?"background:var(--sun-l);border-color:#F0D78A":"background:var(--bad-bg);border-color:#F3B4B6"}">รอบถ่ายภาพ <b>${rd.label}</b> · ${rd.open?"เปิดอยู่":rd.before?"ยังไม่ถึงรอบ ถ่ายรอบเดือนไม่ได้":"ปิดรอบแล้ว ถ่ายรอบเดือนไม่ได้"}</div>
+   <div class="card"><h2 style="margin-top:0">☀️ กลางวัน · ทุกป้าย</h2><p>ถ่ายแล้ว ${ss.length-dLeft.length}/${ss.length} ป้าย</p>
+     <div class="row"><button class="sun" data-run="day">${IC.cam}${dLeft.length===ss.length?"เริ่มถ่าย":dLeft.length?`ทำต่อ (เหลือ ${dLeft.length})`:"ถ่ายครบแล้ว · ถ่ายซ้ำทั้งหมด"}</button></div>
+     <p class="muted">${st.dayStart}:00–${st.dayEnd}:00 น.</p></div>
+   ${lit.length?`<div class="card"><h2 style="margin-top:0">🌙 กลางคืน · เฉพาะป้ายไฟ</h2><p>ถ่ายแล้ว ${lit.length-nLeft.length}/${lit.length} ป้าย ${nLeft.length?`<span class="chip c-bad">งานค้าง ${nLeft.length}</span>`:""}</p>
+     <div class="row"><button class="pri" data-run="night" style="background:var(--lotus-dd);border-color:var(--lotus-dd)" ${nLeft.length?"":"disabled"}>${IC.cam}${nLeft.length?`ถ่ายกลางคืน (${nLeft.length})`:"ถ่ายครบแล้ว"}</button></div>
+     <p class="muted">${st.nightStart}:00–${st.nightEnd}:00 น. หลังเปิดไฟป้าย · ถ่ายเต็มภาพ ไม่ต้องตัด</p></div>`:""}`;
+  $$("[data-run]",app).forEach(x=>x.onclick=()=>{ const sh=x.dataset.run, d=sh==="day";
+    if(d&&!rd.open) return toast(`ถ่ายรอบเดือนได้เฉพาะวันที่ ${rd.label}`,4500);
+    if(!(d?dayOK:nightOK)) return toast(tmsg(d),4500);
+    runInspect(app,p,b,sh,{all:d&&!dLeft.length}); });
 }
-async function runInspect(app,p,b,shift,retakeOnly){
-  const shTH=shift==="day"?"กลางวัน":"กลางคืน", mk=monthKey();
-  if(!retakeOnly){
+async function runInspect(app,p,b,shift,opt={}){
+  const shTH=shift==="day"?"กลางวัน":"กลางคืน", mk=monthKey(), li=p.lastInspection||{};
+  if(!opt.retake&&li[shift+"Ov"]!==mk){
     let ov; try{ ov=await takePhoto(`${p.id} ภาพรวม ${shTH}`,{mode:"overview"}); }catch(e){ if(e.message!=="cancel") toast(e.message); return; }
     if(!checkGPS(b,ov.gps)) return;
     app.innerHTML=`<div class="card">กำลังอัปโหลดภาพรวม…</div>`;
-    let ovr; try{ ovr=await callScript(p.zoneId,{action:"upload",image:ov.full,branch:p.branch,name:`${p.id}_overview_${shift}`,month:mk}); }catch(e){ toast(e.message,5000); return go("inspect/"+p.id); }
-    await db.doc("thumbs/"+p.id).set({zoneId:p.zoneId,branch:p.branch,[shift]:ov.thumb,[shift+"Url"]:ovr.url,[shift+"Month"]:mk},{merge:true});
+    try{ const ovr=await callScript(p.zoneId,{action:"upload",image:ov.full,branch:p.branch,name:`${p.id}_overview_${shift}`,month:mk});
+      const bt=db.batch(); bt.set(db.doc("thumbs/"+p.id),{zoneId:p.zoneId,branch:p.branch,[shift]:ov.thumb,[shift+"Url"]:ovr.url,[shift+"Month"]:mk},{merge:true});
+      bt.update(db.doc("points/"+p.id),{["lastInspection."+shift+"Ov"]:mk,updatedAt:FV.serverTimestamp()}); await bt.commit();
+      p.lastInspection={...li,[shift+"Ov"]:mk}; }
+    catch(e){ toast(e.message,5000); return go("inspect/"+p.id); }
   }
-  const slots=Object.values(S.slots).filter(s=>s.pointId===p.id&&(retakeOnly?(s.retake&&s.retake.shift===shift):(shift==="day"||s.lit))).sort((a,b)=>a.row-b.row||a.col-b.col);
+  const all=Object.values(S.slots).filter(s=>s.pointId===p.id).sort((a,c)=>a.row-c.row||a.col-c.col);
+  const queue=all.filter(s=>opt.retake?(s.retake&&s.retake.shift===shift):shift==="night"?(s.lit&&(opt.all||!slotDone(s,"night",mk))):(opt.all||!slotDone(s,"day",mk)));
   let i=0; const results=[];
   const step=()=>{
-    if(i>=slots.length) return finish();
-    const s=slots[i];
-    app.innerHTML=`<h1>${esc(p.id)} · ${shTH}</h1><div class="card"><div class="step">ช่อง ${i+1} จาก ${slots.length} · ${esc(s.id)}</div><div class="prog" style="margin:6px 0 4px"><i style="width:${Math.round(i/slots.length*100)}%"></i></div>
-     <div style="margin:10px 0">${pylonHTML(p,Object.values(S.slots).filter(x=>x.pointId===p.id),`${s.row}-${s.col}`)}</div>
+    if(i>=queue.length) return finish();
+    const s=queue[i];
+    app.innerHTML=`<h1>${esc(p.id)} · ${shTH}</h1><div class="card"><div class="step">ป้าย ${String(s.no).padStart(2,"0")} · ${i+1} จาก ${queue.length}</div><div class="prog" style="margin:6px 0 4px"><i style="width:${Math.round(i/queue.length*100)}%"></i></div>
+     <div style="margin:10px 0">${pylonHTML(p,all,`${s.row}-${s.col}`)}</div>
      <p>ร้านในทะเบียน: <b>${esc(s.tenant||"-")}</b> · สภาพล่าสุด ${chip(s.condition)}</p>
      ${s.retake?`<p class="red">ถ่ายใหม่: ${esc(s.retake.reason||"")}</p>`:""}
-     <div class="row"><button id="skip">ถ่ายไม่ได้</button><span class="grow"></span><button class="pri" id="shot">${IC.cam}ถ่ายภาพช่องนี้</button></div></div>`;
+     <div class="row"><button id="skip">ถ่ายไม่ได้</button><button id="later">บันทึกไว้ทำต่อ</button><span class="grow"></span><button class="sun" id="shot">${IC.cam}ถ่ายป้ายนี้</button></div></div>`;
+    $("#later").onclick=()=>{ toast("บันทึกแล้ว ป้ายที่ถ่ายไปแล้วไม่ต้องถ่ายซ้ำ",4000); go("branch/"+p.branch); };
     $("#skip").onclick=async()=>{ const why=prompt("เหตุผลที่ถ่ายไม่ได้ เช่น มีรถบัง, ป้ายถูกรื้อ"); if(!why) return;
-      results.push({s,skip:why}); await db.collection("inspections").add({slotId:s.id,pointId:p.id,branch:s.branch,zoneId:s.zoneId,shift,month:mk,status:"review",kind:"skip",note:why,ai:{},takenBy:S.me.email,takenAt:FV.serverTimestamp()}); i++; step(); };
+      results.push({s,skip:why}); await db.collection("inspections").add({slotId:s.id,pointId:p.id,branch:s.branch,zoneId:s.zoneId,shift,month:mk,status:"review",kind:"skip",note:why,takenBy:S.me.email,takenAt:FV.serverTimestamp()}); i++; step(); };
     $("#shot").onclick=async e=>{
       let ph; try{ ph=await takePhoto(`${s.id} ${shTH}`,{mode:shift==="night"?"night":"slot",aspect:(s.w&&s.h)?s.w/s.h:null}); }catch(err){ if(err.message!=="cancel") toast(err.message); return; }
-      busy(e.target,true,"กำลังอัปโหลดและให้ AI ตรวจ…");
+      if(!checkGPS(b,ph.gps)) return;
+      busy(e.target,true,"กำลังอัปโหลด…");
       try{
-        const r=await analyzeSlot(s,shift,ph);
-        if(r.ai&&r.ai.category==="ภาพใช้ไม่ได้"&&!(await confirmBox(`AI แจ้งว่าภาพใช้ไม่ได้: ${r.ai.note||""} ต้องการบันทึกภาพนี้ไว้หรือไม่ (กดยกเลิกเพื่อถ่ายใหม่)`))){ busy(e.target,false); return; }
-        const firstBase=!r.hadBaseline, auto=aiOK(r.ai), now=FV.serverTimestamp();
-        const su={lastFileId:r.fileId,lastUrl:r.url,lastInspectedAt:now,updatedAt:now}, tu={zoneId:s.zoneId,branch:s.branch,last:ph.thumb};
+        const r=await uploadSlot(s,shift,ph), now=FV.serverTimestamp(), noBase=shift==="night"?!s.baseFileIdNight:!s.baseFileIdDay;
+        const su={lastFileId:r.fileId,lastUrl:r.url,lastInspectedAt:now,updatedAt:now,[shift==="night"?"nightMonth":"dayMonth"]:mk}, tu={zoneId:s.zoneId,branch:s.branch,last:ph.thumb};
+        if(noBase){ if(shift==="day"){su.baseFileIdDay=r.fileId; su.baseUrlDay=r.url; tu.baseDay=ph.thumb;} else {su.baseFileIdNight=r.fileId; su.baseUrlNight=r.url; tu.baseNight=ph.thumb;} }
         if(s.retake) su.retake=FV.delete();
-        if(firstBase){ if(shift==="day"){su.baseFileIdDay=r.fileId; su.baseUrlDay=r.url; tu.baseDay=ph.thumb;} else {su.baseFileIdNight=r.fileId; su.baseUrlNight=r.url; tu.baseNight=ph.thumb;} }
-        if(auto) su.condition="ปกติ";
-        const b2=db.batch();
-        b2.update(db.doc("slots/"+s.id),su); b2.set(db.doc("thumbs/"+s.id),tu,{merge:true});
-        b2.set(db.collection("inspections").doc(),{slotId:s.id,pointId:p.id,branch:s.branch,zoneId:s.zoneId,shift,month:mk,fileId:r.fileId,url:r.url,thumb:ph.thumb,ai:r.ai||{},
-          status:auto?"auto":"review",kind:firstBase?"baseline":"monthly",gps:ph.gps||null,takenBy:S.me.email,takenAt:now});
-        await b2.commit(); Object.assign(S.slots[s.id],su,{lastInspectedAt:new Date()}); delete S.slots[s.id].retake;
-        results.push({s,ai:r.ai,auto}); i++; step();
+        const b2=db.batch(); b2.update(db.doc("slots/"+s.id),su); b2.set(db.doc("thumbs/"+s.id),tu,{merge:true});
+        b2.set(db.collection("inspections").doc(),{slotId:s.id,pointId:p.id,branch:s.branch,zoneId:s.zoneId,shift,month:mk,fileId:r.fileId,url:r.url,thumb:ph.thumb,
+          status:"review",kind:opt.retake?"retake":noBase?"baseline":"monthly",flags:gpsFlags(b,ph.gps),gps:ph.gps||null,takenBy:S.me.email,takenAt:now});
+        await b2.commit(); const lo={...su,lastInspectedAt:new Date()}; delete lo.retake; Object.assign(S.slots[s.id],lo); delete S.slots[s.id].retake;
+        results.push({s}); i++; step();
       }catch(err){ busy(e.target,false); toast(err.message,5000); }
     };
   };
   const finish=async()=>{
-    if(!retakeOnly) await db.doc("points/"+p.id).update({["lastInspection."+shift]:mk,updatedAt:FV.serverTimestamp()});
-    if(!retakeOnly) p.lastInspection={...(p.lastInspection||{}),[shift]:mk};
-    const rev=results.filter(r=>!r.auto).length;
-    app.innerHTML=`<h1>ส่งภาพ ${esc(p.id)} แล้ว</h1><div class="card"><p>${results.length} ช่อง · ${S.settings.alwaysReview?`ส่งให้ผู้จัดการศูนย์/AM ยืนยันทั้งหมด ${rev} ช่อง`:`ปกติ ${results.filter(r=>r.auto).length} · ส่งให้ยืนยัน ${rev}`}</p>
-     <p class="muted">ด้านล่างคือผลเบื้องต้นจาก AI ยังไม่ใช่ผลสุดท้าย</p>
-     ${results.map(r=>`<div class="row" style="border-bottom:1px solid #edf1f0;padding:6px 0"><span class="grow">${esc(r.s.id)}</span>${r.skip?`<span class="chip c-none">ถ่ายไม่ได้</span>`:chip(COND.includes(r.ai.category)?r.ai.category:"ยังไม่ตรวจ")}<span class="muted">${r.ai&&r.ai.note?esc(r.ai.note):""}</span></div>`).join("")}
+    const allDone=shift==="night"?all.filter(s=>s.lit).every(s=>slotDone(s,"night",mk)):all.every(s=>slotDone(s,"day",mk));
+    if(allDone&&!opt.retake){ await db.doc("points/"+p.id).update({["lastInspection."+shift]:mk,updatedAt:FV.serverTimestamp()}); p.lastInspection={...(p.lastInspection||{}),[shift]:mk}; }
+    const litLeft=shift==="day"?all.filter(s=>s.lit&&!slotDone(s,"night",mk)).length:0;
+    app.innerHTML=`<h1>ส่งภาพ ${esc(p.id)} แล้ว</h1><div class="card"><p>${results.length} ป้าย · ส่งให้ผู้จัดการศูนย์/AM ตรวจภาพแล้ว</p>
+     ${results.map(r=>`<div class="row" style="border-bottom:1px solid #edf1f0;padding:6px 0"><span class="grow">ป้าย ${String(r.s.no).padStart(2,"0")} ${esc(r.s.tenant||"")}</span>${r.skip?`<span class="chip c-none">ถ่ายไม่ได้</span>`:'<span class="chip c-ok">ส่งแล้ว</span>'}</div>`).join("")}
+     ${litLeft?`<div class="card" style="margin-top:10px;background:#E7ECF7;border-color:#C5D0EA">🌙 มีงานถ่ายกลางคืน ${litLeft} ป้ายไฟ ถ่ายได้ ${S.settings.nightStart}:00–${S.settings.nightEnd}:00 น.</div>`:""}
      <div class="row" style="justify-content:flex-end;margin-top:10px"><button class="pri" id="back">กลับหน้าสาขา</button></div></div>`;
     $("#back").onclick=async()=>{ await loadAll(); go("branch/"+p.branch); };
   };
@@ -855,28 +915,32 @@ async function runInspect(app,p,b,shift,retakeOnly){
 /* ================= AM ยืนยันผล AI ================= */
 async function viewReview(app){
   const list=Object.values(S.reviews).filter(inFilter).filter(canReview).sort((a,b)=>(a.branch+a.slotId).localeCompare(b.branch+b.slotId));
-  const okList=list.filter(r=>r.ai&&r.ai.category==="ปกติ"&&r.kind!=="skip");
-  app.innerHTML=`<div class="row"><h1 class="grow">รอยืนยันผล AI (${list.length})</h1>${okList.length?`<button id="bulk">${IC.check}ยืนยันที่ AI ว่าปกติ (${okList.length})</button>`:""}</div>${filterBar()}
-  ${list.length?"":'<div class="card empty-state">ไม่มีรายการรอยืนยัน</div>'}<div id="rl"></div>`;
+  const page=list.slice(0,40);
+  app.innerHTML=`<h1>รอตรวจภาพ (${list.length})</h1>${filterBar()}
+   ${list.length?`<div class="row" style="margin-bottom:10px"><label class="check"><input type="checkbox" id="pickall"> เลือกทั้งหมดในหน้านี้</label><span class="grow"></span><button class="pri" id="bulk" disabled>${IC.check}ยืนยัน “ปกติ” ที่เลือก (0)</button></div>`:'<div class="card empty-state">ไม่มีภาพรอตรวจ</div>'}<div id="rl"></div>
+   ${list.length>40?`<p class="muted">แสดง 40 รายการแรก ตรวจเสร็จแล้วกดเมนูอีกครั้งเพื่อโหลดรายการถัดไป</p>`:""}`;
   bindFilters();
-  const bk=$("#bulk"); if(bk) bk.onclick=async()=>{ if(!await confirmBox(`ยืนยันผล "ปกติ" ${okList.length} รายการตามที่ AI ตรวจ? ควรดูภาพคร่าว ๆ ก่อนกด`)) return;
-    busy(bk,true,"กำลังยืนยัน…"); let n=0; for(const r of okList){ try{ await confirmReview(r,"ปกติ",false); delete S.reviews[r.id]; n++; }catch(e){} } toast(`ยืนยันแล้ว ${n} รายการ`); render(); };
-  const rl=$("#rl");
-  for(const r of list.slice(0,30)){
+  const rl=$("#rl"), picked=new Set();
+  const upd=()=>{ const bk=$("#bulk"); if(bk){ bk.disabled=!picked.size; bk.innerHTML=`${IC.check}ยืนยัน “ปกติ” ที่เลือก (${picked.size})`; } };
+  for(const r of page){
     const s=S.slots[r.slotId]||{}; const th=await db.doc("thumbs/"+r.slotId).get().then(d=>d.exists?d.data():{}).catch(()=>({}));
-    const base=r.shift==="night"?th.baseNight:th.baseDay; const sug=COND.includes(r.ai&&r.ai.category)?r.ai.category:(s.condition||"ยังไม่ตรวจ");
+    const base=r.shift==="night"?th.baseNight:th.baseDay; const sug=s.condition&&s.condition!=="ยังไม่ตรวจ"?s.condition:"ปกติ";
+    const kindTH={register:"ลงทะเบียน",monthly:"รอบเดือน",retake:"ถ่ายใหม่",baseline:"ภาพต้นแบบ",skip:"ถ่ายไม่ได้"}[r.kind]||"";
     const el=document.createElement("div"); el.className="card";
-    el.innerHTML=`<div class="row"><b class="grow">${esc(r.slotId)}</b><span class="muted">${esc((S.branches[r.branch]||{}).name||r.branch)} · ${r.shift==="night"?"กลางคืน":"กลางวัน"} · ${dTH(r.takenAt)}</span></div>
-     <p>ร้านในทะเบียน: ${esc(s.tenant||"-")} · AI: ${r.kind==="skip"?"ถ่ายไม่ได้ — "+esc(r.note):`<b>${esc((r.ai&&r.ai.category)||"ไม่มีผล")}</b> (ความมั่นใจ ${Math.round((r.ai&&r.ai.confidence||0)*100)}%) ${r.ai&&r.ai.error?`<span class="red">AI ใช้งานไม่ได้</span> <span class="muted">${esc(String(r.ai.error).replace(/\{[\s\S]*/,"").slice(0,60))}</span>`:esc(r.ai&&r.ai.note||"")}`}</p>
-     <div class="thumbs">${base?`<figure><img src="${base}" alt="ภาพต้นแบบ"><figcaption>ต้นแบบ</figcaption></figure>`:""}${r.thumb?`<figure><img src="${r.thumb}" alt="ภาพที่ถ่าย"><figcaption>ภาพที่ถ่าย${r.url?` · <a href="${esc(r.url)}" target="_blank" rel="noopener">ภาพเต็ม</a>`:""}</figcaption></figure>`:""}</div>
-     <div class="row" style="margin-top:8px"><select class="grow" data-f>${COND.filter(c=>c!=="ยังไม่ตรวจ").map(c=>`<option ${c===sug?"selected":""}>${esc(c)}</option>`).join("")}</select></div>
+    el.innerHTML=`<div class="row"><label class="check" style="margin:0"><input type="checkbox" data-pick></label><b class="grow">${esc(r.slotId)}</b><span class="muted">${esc((S.branches[r.branch]||{}).name||r.branch)} · ${r.shift==="night"?"🌙 กลางคืน":"☀️ กลางวัน"} · ${dTH(r.takenAt)}</span></div>
+     <p style="margin:6px 0">ร้านในทะเบียน: <b>${esc(s.tenant||"-")}</b> · <span class="chip c-none">${kindTH}</span> ${(r.flags||[]).map(f=>`<span class="chip c-warn">${esc(f)}</span>`).join(" ")} ${r.kind==="skip"?`<span class="red">${esc(r.note||"")}</span>`:""}</p>
+     <div class="thumbs">${base&&r.kind!=="register"&&r.kind!=="baseline"?`<figure><img src="${base}" alt="ภาพต้นแบบ"><figcaption>ต้นแบบ</figcaption></figure>`:""}${r.thumb?`<figure><img src="${r.thumb}" alt="ภาพที่ถ่าย"><figcaption>ภาพที่ถ่าย${r.url?` · <a href="${esc(r.url)}" target="_blank" rel="noopener">ภาพเต็ม</a>`:""}</figcaption></figure>`:""}</div>
+     <div class="row" style="margin-top:8px"><select class="grow" data-f aria-label="สภาพป้าย">${COND.filter(c=>c!=="ยังไม่ตรวจ").map(c=>`<option ${c===sug?"selected":""}>${esc(c)}</option>`).join("")}</select></div>
      ${r.thumb?'<label class="check"><input type="checkbox" data-base> ใช้ภาพนี้เป็นภาพต้นแบบใหม่ (เช่น เปลี่ยนป้ายใหม่แล้ว)</label>':""}
      <div class="row" style="justify-content:flex-end"><button class="dan" data-rej>ส่งกลับให้ถ่ายใหม่</button><button class="pri" data-ok>ยืนยัน</button></div>`;
-    rl.appendChild(el);
-    $("[data-rej]",el).onclick=()=>rejectModal(r,()=>{ el.remove(); renderNav(); });
-    $("[data-ok]",el).onclick=async e=>{ busy(e.target,true); try{ await confirmReview(r,$("[data-f]",el).value,!!($("[data-base]",el)||{}).checked); el.remove(); delete S.reviews[r.id]; renderNav(); toast("ยืนยันแล้ว"); }catch(err){ busy(e.target,false); toast(err.message,5000);} };
+    rl.appendChild(el); el._r=r;
+    $("[data-pick]",el).onchange=e=>{ e.target.checked?picked.add(r.id):picked.delete(r.id); upd(); };
+    $("[data-rej]",el).onclick=()=>rejectModal(r,()=>{ el.remove(); picked.delete(r.id); upd(); renderNav(); });
+    $("[data-ok]",el).onclick=async e=>{ busy(e.target,true); try{ await confirmReview(r,$("[data-f]",el).value,!!($("[data-base]",el)||{}).checked); el.remove(); picked.delete(r.id); upd(); delete S.reviews[r.id]; renderNav(); toast("ยืนยันแล้ว"); }catch(err){ busy(e.target,false); toast(err.message,5000);} };
   }
-  if(list.length>30) rl.insertAdjacentHTML("beforeend",`<p class="muted">แสดง 30 รายการแรก ยืนยันแล้วกดเมนูอีกครั้งเพื่อโหลดรายการถัดไป</p>`);
+  const pa=$("#pickall"); if(pa) pa.onchange=()=>{ $$("[data-pick]",rl).forEach(c=>{ c.checked=pa.checked; const r=c.closest(".card")._r; pa.checked?picked.add(r.id):picked.delete(r.id); }); upd(); };
+  const bk=$("#bulk"); if(bk) bk.onclick=async()=>{ if(!await confirmBox(`ยืนยันสภาพ “ปกติ” ${picked.size} ป้ายที่เลือก?`)) return;
+    busy(bk,true,"กำลังยืนยัน…"); let n=0; for(const id of [...picked]){ const r=S.reviews[id]; if(!r) continue; try{ await confirmReview(r,"ปกติ",false); delete S.reviews[id]; n++; }catch(e){} } toast(`ยืนยันแล้ว ${n} ป้าย`); render(); };
 }
 const REJECT_REASONS=["ภาพไม่ชัด / มืด / ย้อนแสง","ป้ายไม่อยู่ในภาพหรือเห็นไม่ครบ","ถ่ายผิดช่อง / ผิดฝั่ง","ติดป้ายข้างเคียงมากเกินไป","รอบกลางคืนแต่ไฟยังไม่เปิด"];
 function rejectModal(r, onDone){
@@ -904,10 +968,11 @@ async function confirmReview(r, finalCond, setBase){
     if(setBase&&r.fileId){ if(r.shift==="night"){su.baseFileIdNight=r.fileId; su.baseUrlNight=r.url;} else {su.baseFileIdDay=r.fileId; su.baseUrlDay=r.url;} b.set(db.doc("thumbs/"+s.id),{[r.shift==="night"?"baseNight":"baseDay"]:r.thumb,zoneId:s.zoneId,branch:s.branch},{merge:true}); }
     b.update(db.doc("slots/"+s.id),su); Object.assign(s,{condition:finalCond});
     const hasOpen=Object.values(S.tickets).some(t=>t.slotId===s.id&&t.category===finalCond);
+    if(r.kind==="skip") { await b.commit(); return; }
     if(!NO_TICKET.includes(finalCond)&&!hasOpen){
       const sla=S.settings.sla[finalCond]||7, ref=db.collection("tickets").doc();
       const t={slotId:s.id,pointId:s.pointId,branch:s.branch,zoneId:s.zoneId,category:finalCond,shift:r.shift||"day",tenant:s.tenant||"",slaDays:sla,
-        status:"open",createdAt:TSx.now(),dueAt:TSx.fromDate(addDays(new Date(),sla)),createdBy:S.me.email,inspectionId:r.id,beforeUrl:r.url||""};
+        status:"open",createdAt:TSx.now(),dueAt:TSx.fromDate(addDays(new Date(),sla)),lastProgressAt:TSx.now(),progress:[],createdBy:S.me.email,inspectionId:r.id,beforeUrl:r.url||""};
       b.set(ref,t); S.tickets[ref.id]={id:ref.id,...t};
     }
   }
@@ -916,49 +981,78 @@ async function confirmReview(r, finalCond, setBase){
 
 /* ================= ใบงาน ================= */
 async function viewTickets(app){
-  const list=Object.values(S.tickets).filter(inFilter).sort((a,b)=>ticketState(b).over-ticketState(a).over);
+  const list=Object.values(S.tickets).filter(inFilter).sort((a,b)=>ticketState(b).over-ticketState(a).over||progressAge(b)-progressAge(a));
+  const PD=S.settings.progressDays;
   app.innerHTML=`<h1>ใบงานแก้ไขป้าย (${list.length})</h1>${filterBar()}
   ${list.length?"":'<div class="card empty-state">ไม่มีใบงานค้าง</div>'}
-  ${list.map(t=>{ const st=ticketState(t), br=S.branches[t.branch]||{};
-    return `<div class="card"><div class="row"><b class="grow">${esc(t.slotId)}</b>${chip(t.category)}${t.status==="pending_close"?' <span class="chip c-warn">รออนุมัติปิด</span>':""}</div>
-    <div class="muted">${esc(br.name||t.branch)} · ร้าน ${esc(t.tenant||"-")} · เปิด ${dTH(t.createdAt)} · กำหนดเสร็จ ${dTH(t.dueAt)}</div>
-    <p class="${st.lvl?"red":""}">${st.lvl?`เกิน ${st.over} วัน · ${st.txt}`:"อยู่ในกำหนด"}</p>
-    <div class="row">${canShootBranch(t.branch)&&t.status==="open"?`<button class="pri" data-close="${esc(t.id)}">${IC.cam}ปิดงาน</button>`:""}
+  ${list.map(t=>{ const st=ticketState(t), br=S.branches[t.branch]||{}, pa=progressAge(t), lastP=(t.progress||[]).slice(-1)[0];
+    return `<div class="card"><div class="row"><b class="grow">${esc(t.slotId)}</b>${chip(t.category)}${t.status==="pending_close"?' <span class="chip c-warn">รออนุมัติปิด</span>':""}${t.status==="open"&&pa>PD?` <span class="chip c-bad">ขาดอัปเดต ${pa} วัน</span>`:""}</div>
+    <div class="muted">${esc(br.name||t.branch)} · ร้าน ${esc(t.tenant||"-")} · ${esc(SLA_TH[t.category]||t.category)} ${t.slaDays} วัน · เปิด ${dTH(t.createdAt)} · กำหนดเสร็จ ${dTH(t.dueAt)}</div>
+    <p class="${st.lvl?"red":""}" style="margin:6px 0">${st.lvl?`เกิน ${st.over} วัน · ${st.txt}`:"อยู่ในกำหนด"} · อัปเดตล่าสุด ${pa===0?"วันนี้":pa+" วันก่อน"} (ต้องอัปเดตทุก ${PD} วัน)</p>
+    ${lastP?`<div class="muted" style="background:var(--paper);border-radius:10px;padding:8px 10px;margin-bottom:8px">${dTH(lastP.at)} · ${esc(lastP.note||"")}${lastP.url?` · <a href="${esc(lastP.url)}" target="_blank" rel="noopener">ภาพ</a>`:""}<span class="muted"> (${(t.progress||[]).length} ครั้ง)</span></div>`:""}
+    <div class="row">${t.status==="open"&&(canShootBranch(t.branch)||canReview(t))?`<button data-prog="${esc(t.id)}">อัปเดตความคืบหน้า</button>`:""}
+    ${t.status==="open"&&(t.category==="ไม่มีสัญญา"?canEditZone(t.zoneId):canShootBranch(t.branch))?`<button class="sun" data-close="${esc(t.id)}">${t.category==="ไม่มีสัญญา"?"ทำสัญญาแล้ว ปิดงาน":IC.cam+"ปิดงาน"}</button>`:""}
     ${canReview(t)&&t.status==="pending_close"?`<button class="pri" data-ap="${esc(t.id)}">อนุมัติปิด</button><button data-rj="${esc(t.id)}">ส่งกลับให้แก้ใหม่</button>`:""}
     ${t.afterUrl?`<a href="${esc(t.afterUrl)}" target="_blank" rel="noopener">ภาพหลังแก้</a>`:""}${t.beforeUrl?` <a href="${esc(t.beforeUrl)}" target="_blank" rel="noopener">ภาพก่อนแก้</a>`:""}</div></div>`;}).join("")}`;
   bindFilters();
+  $$("[data-prog]",app).forEach(x=>x.onclick=()=>progressModal(S.tickets[x.dataset.prog]));
   $$("[data-close]",app).forEach(x=>x.onclick=()=>closeTicket(S.tickets[x.dataset.close]));
   $$("[data-ap]",app).forEach(x=>x.onclick=async()=>{ const t=S.tickets[x.dataset.ap]; await finalizeClose(t,t.result||"ปกติ",t.afterTenant); toast("ปิดใบงานแล้ว"); render(); });
   $$("[data-rj]",app).forEach(x=>x.onclick=async()=>{ await db.doc("tickets/"+x.dataset.rj).update({status:"open",updatedAt:FV.serverTimestamp()}); S.tickets[x.dataset.rj].status="open"; toast("ส่งกลับแล้ว"); render(); });
 }
+function progressModal(t){
+  const m=modal(`<h2 style="margin-top:0">อัปเดตความคืบหน้า</h2><p class="muted">${esc(t.slotId)} · ${esc(SLA_TH[t.category]||t.category)}</p>
+   <label>ความคืบหน้า</label><textarea id="pn" rows="3" placeholder="เช่น สั่งผลิตแผ่นป้ายแล้ว คาดว่าติดตั้งวันที่ 20"></textarea>
+   <label class="check"><input type="checkbox" id="pph"> แนบภาพ (ไม่บังคับ)</label>
+   <div class="row" style="justify-content:flex-end;margin-top:10px"><button data-c>ยกเลิก</button><button class="pri" data-s>บันทึก</button></div>`);
+  $("[data-c]",m.el).onclick=m.close;
+  $("[data-s]",m.el).onclick=async e=>{ const note=$("#pn",m.el).value.trim(); if(!note) return toast("พิมพ์ความคืบหน้า");
+    let entry={at:TSx.now(),by:S.me.email,note};
+    if($("#pph",m.el).checked){ const s=S.slots[t.slotId]||{zoneId:t.zoneId,branch:t.branch,id:t.slotId};
+      let ph; try{ ph=await takePhoto(`${t.slotId} ความคืบหน้า`,{mode:"overview"}); }catch(err){ if(err.message!=="cancel") toast(err.message); return; }
+      busy(e.target,true,"กำลังอัปโหลด…"); try{ const r=await uploadSlot({...s,id:t.slotId},"day",ph,"progress"); entry.url=r.url; }catch(err){ busy(e.target,false); return toast(err.message,5000); } }
+    busy(e.target,true);
+    try{ await db.doc("tickets/"+t.id).update({progress:FV.arrayUnion(entry),lastProgressAt:entry.at,updatedAt:FV.serverTimestamp()});
+      t.progress=(t.progress||[]).concat(entry); t.lastProgressAt=entry.at; m.close(); toast("บันทึกความคืบหน้าแล้ว"); render(); }catch(err){ busy(e.target,false); toast(err.message,5000); } };
+}
 function closeTicket(t){
   const s=S.slots[t.slotId]; if(!s) return toast("ไม่พบช่องป้ายนี้ในทะเบียน");
+  if(t.category==="ไม่มีสัญญา"){
+    const m=modal(`<h2 style="margin-top:0">ปิดงาน ป้ายไม่มีสัญญา</h2><p class="muted">${esc(t.slotId)} · ร้าน ${esc(s.tenant||"-")}</p>
+      <label>สถานะสัญญาปัจจุบัน</label><select id="nc">${CONTRACT.filter(c=>c!==NO_CONTRACT).map(c=>`<option>${esc(c)}</option>`).join("")}</select>
+      <label>Unit ใน Simplicity</label><input id="nu" value="${esc(s.unit||"")}">
+      <div class="row" style="justify-content:flex-end;margin-top:10px"><button data-c>ยกเลิก</button><button class="pri" data-s>ปิดงาน</button></div>`);
+    $("[data-c]",m.el).onclick=m.close;
+    $("[data-s]",m.el).onclick=async()=>{ const u={contract:$("#nc",m.el).value,unit:$("#nu",m.el).value.trim(),updatedAt:FV.serverTimestamp()}; const b=db.batch();
+      b.update(db.doc("slots/"+s.id),u); b.update(db.doc("tickets/"+t.id),{status:"closed",result:u.contract,closedBy:S.me.email,closedAt:FV.serverTimestamp(),updatedAt:FV.serverTimestamp()});
+      await b.commit(); Object.assign(s,u); delete S.tickets[t.id]; m.close(); toast("ปิดใบงานแล้ว"); render(); };
+    return;
+  }
   const m=modal(`<h2 style="margin-top:0">ปิดงาน ${esc(t.slotId)}</h2><p>ปัญหา: ${chip(t.category)}</p>
    <label>สภาพหลังแก้</label><select id="res"><option value="ปกติ">ปกติ (ซ่อม/เปลี่ยนแล้ว)</option><option value="ป้ายทดแทน">ขึ้นป้ายทดแทนแล้ว</option></select>
    <div id="fw" hidden><label>ชื่อป้ายทดแทน</label><input id="ftn" placeholder="True / Food Court / Pharmacy"></div>
-   <p class="muted">ต้องถ่ายภาพ${t.shift==="night"?"ตอนกลางคืนเมื่อเปิดไฟแล้ว":""}หลังแก้ ระบบจะให้ AI ตรวจก่อนปิดงาน</p>
-   <div class="row" style="justify-content:flex-end"><button data-c>ยกเลิก</button><button class="pri" data-go>ถ่ายภาพหลังแก้</button></div>`);
+   <p class="muted">ถ่ายภาพ${t.shift==="night"?"ตอนกลางคืนเมื่อเปิดไฟแล้ว":""}หลังแก้ ${canReview(t)?"แล้วปิดงานได้ทันที":"แล้วส่งให้ผู้จัดการศูนย์/AM อนุมัติปิด"}</p>
+   <div class="row" style="justify-content:flex-end"><button data-c>ยกเลิก</button><button class="sun" data-go>${IC.cam}ถ่ายภาพหลังแก้</button></div>`);
   $("#res",m.el).onchange=()=>{$("#fw",m.el).hidden=$("#res",m.el).value!=="ป้ายทดแทน";};
   $("[data-c]",m.el).onclick=m.close;
   $("[data-go]",m.el).onclick=async e=>{
     const result=$("#res",m.el).value, ftn=$("#ftn",m.el).value.trim();
     if(result==="ป้ายทดแทน"&&!ftn) return toast("ใส่ชื่อป้ายทดแทน");
     let ph; try{ ph=await takePhoto(`${t.slotId} หลังแก้`,{mode:t.shift==="night"?"night":"slot",aspect:(s.w&&s.h)?s.w/s.h:null}); }catch(err){ if(err.message!=="cancel") toast(err.message); return; }
-    busy(e.target,true,"กำลังอัปโหลดและให้ AI ตรวจ…");
+    busy(e.target,true,"กำลังอัปโหลด…");
     try{
-      const r=await analyzeSlot(s,t.shift||"day",ph,{noBaseline:result==="ป้ายทดแทน",expectedTenant:result==="ป้ายทดแทน"?ftn:s.tenant});
-      const pass=aiOK(r.ai)||(result==="ป้ายทดแทน"&&r.ai&&!["หลุด/ขาด","ไฟดับทั้งป้าย","ว่าง (ขาวโล่ง)","ภาพใช้ไม่ได้"].includes(r.ai.category));
-      const after={afterFileId:r.fileId,afterUrl:r.url,afterAI:r.ai||{},result,afterTenant:ftn||null,closedBy:S.me.email,closedAt:FV.serverTimestamp(),updatedAt:FV.serverTimestamp()};
+      const r=await uploadSlot(s,t.shift||"day",ph,"after");
+      const after={afterFileId:r.fileId,afterUrl:r.url,result,afterTenant:ftn||null,closedBy:S.me.email,closedAt:FV.serverTimestamp(),updatedAt:FV.serverTimestamp()};
       Object.assign(t,after,{afterThumb:ph.thumb});
-      if(pass||canReview(t)){ await finalizeClose(t,result,ftn,ph.thumb); toast(pass?"AI ยืนยันแล้ว ปิดใบงาน":"ปิดใบงานโดยผู้มีสิทธิ์อนุมัติ"); }
-      else { await db.doc("tickets/"+t.id).update({...after,status:"pending_close"}); t.status="pending_close"; toast(`AI ยังเห็นว่า: ${r.ai.category||"-"} ส่งให้ผู้จัดการศูนย์หรือ AM อนุมัติปิด`,5000); }
+      if(canReview(t)){ await finalizeClose(t,result,ftn,ph.thumb); toast("ปิดใบงานแล้ว"); }
+      else { await db.doc("tickets/"+t.id).update({...after,status:"pending_close"}); t.status="pending_close"; toast("ส่งให้ผู้จัดการศูนย์/AM อนุมัติปิดแล้ว",4000); }
       m.close(); render();
     }catch(err){ busy(e.target,false); toast(err.message,5000); }
   };
 }
 async function finalizeClose(t, result, ftn, thumb){
   const s=S.slots[t.slotId]; const now=FV.serverTimestamp(); const b=db.batch();
-  b.update(db.doc("tickets/"+t.id),{status:"closed",result,afterFileId:t.afterFileId||null,afterUrl:t.afterUrl||null,afterAI:t.afterAI||{},afterTenant:ftn||null,closedBy:t.closedBy||S.me.email,closedAt:now,updatedAt:now});
+  b.update(db.doc("tickets/"+t.id),{status:"closed",result,afterFileId:t.afterFileId||null,afterUrl:t.afterUrl||null,afterTenant:ftn||null,closedBy:t.closedBy||S.me.email,closedAt:now,updatedAt:now});
   if(s){
     const su={condition:result,updatedAt:now}, night=t.shift==="night";
     if(t.afterFileId){ su.lastFileId=t.afterFileId; su.lastUrl=t.afterUrl; su.lastInspectedAt=now;
@@ -987,7 +1081,7 @@ async function viewAdmin(app){
     <label>LINE Group ID ของเขต (สำหรับแจ้งเตือน ไม่บังคับ)</label><input id="line" value="${esc(z.lineGroupId||"")}">
     <div class="row" style="justify-content:flex-end;margin-top:8px"><button id="ping">ทดสอบการเชื่อมต่อ</button><button class="pri" id="psave">บันทึก</button></div></div>
   <h2>สาขาในเขต (${zb.length})</h2><div class="card scroll"><table class="tbl"><thead><tr><th>รหัส</th><th>ชื่อ</th><th>รูปแบบ</th><th>พิกัด</th><th></th></tr></thead><tbody>
-    ${zb.map(b=>`<tr><td>${esc(b.id)}</td><td>${esc(b.name)}</td><td>${esc(b.format||"")}</td><td class="muted">${b.lat?esc(b.lat+","+b.lng):"-"}</td><td><button data-eb="${esc(b.id)}">แก้ไข</button></td></tr>`).join("")}</tbody></table>
+    ${zb.map(b=>`<tr><td>${esc(b.id)}</td><td>${esc(b.name)}</td><td>${esc(b.format||"")}</td><td class="muted">${b.lat?esc(b.lat+","+b.lng)+(b.radiusM?` · ${b.radiusM} ม.`:""):"-"}</td><td><button data-eb="${esc(b.id)}">แก้ไข</button></td></tr>`).join("")}</tbody></table>
     <div class="row" style="margin-top:8px"><button id="addb">เพิ่มสาขา</button></div></div>
   <h2>นำเข้าไฟล์ทะเบียนป้าย (Excel)</h2><div class="card">
     <p class="muted">ใช้ไฟล์แม่แบบ Sign Registry Template ระบบจะนำเข้าเฉพาะสาขาของเขตนี้ ข้ามแถวที่หมายเหตุว่า “แถวตัวอย่าง” และไม่ลบข้อมูลเดิม ภาพต้นแบบจะได้จากการถ่ายภาพตรวจครั้งแรก</p>
@@ -999,7 +1093,7 @@ async function viewAdmin(app){
     await db.doc(`zones/${zid}/private/script`).set({url,key,updatedBy:S.me.email,updatedAt:FV.serverTimestamp()}); await db.doc("zones/"+zid).update({lineGroupId:$("#line").value.trim()});
     S.privCache[zid]={url,key}; toast("บันทึกแล้ว"); };
   $("#ping").onclick=async e=>{ busy(e.target,true,"กำลังทดสอบ…"); S.privCache[zid]={url:$("#purl").value.trim(),key:$("#pkey").value.trim()};
-    try{ const j=await callScript(zid,{action:"ping"}); toast(`เชื่อมต่อได้ · เวอร์ชัน ${j.version} · AI ${j.ai?"พร้อม":"ยังไม่ได้ตั้งค่า GEMINI_API_KEY"}`,5000); }catch(err){ toast(err.message,5000); } busy(e.target,false); };
+    try{ const j=await callScript(zid,{action:"ping"}); toast(`เชื่อมต่อได้ · ที่เก็บภาพเวอร์ชัน ${j.version}`,5000); }catch(err){ toast(err.message,5000); } busy(e.target,false); };
   $("#addb").onclick=()=>branchModal(zid,null);
   $$("[data-eb]",app).forEach(x=>x.onclick=()=>branchModal(zid,S.branches[x.dataset.eb]));
   $("#xl").onchange=e=>importExcel(e.target.files[0],zid,$("#xlp"));
@@ -1010,12 +1104,13 @@ function branchModal(zid,b){
    <label>ชื่อสาขา</label><input id="bn" value="${esc(b?b.name:"")}">
    <label>รูปแบบ</label><select id="bf">${["Lotus's","Makro","Talad Super"].map(f=>`<option ${b&&b.format===f?"selected":""}>${f}</option>`).join("")}</select>
    <div class="row"><div class="grow"><label>ละติจูด (ไม่บังคับ)</label><input id="blat" type="number" step="any" value="${esc(b&&b.lat||"")}"></div><div class="grow"><label>ลองจิจูด</label><input id="blng" type="number" step="any" value="${esc(b&&b.lng||"")}"></div></div>
-   <p class="muted">ถ้าใส่พิกัด ระบบจะตรวจว่าถ่ายภาพในรัศมี ${S.settings.gpsRadiusM} ม. จากสาขา</p>
+   <label>รัศมีที่ถ่ายภาพได้ (เมตร)</label><input id="brad" type="number" min="50" value="${esc(b&&b.radiusM||"")}" placeholder="ค่าเริ่มต้น ${S.settings.gpsRadiusM}">
+   <p class="muted">ถ้าใส่พิกัด ระบบจะไม่ให้ถ่ายภาพนอกรัศมีนี้ (AM ถ่ายได้แต่ติดธงให้ตรวจ)</p>
    <div class="row" style="justify-content:flex-end"><button data-c>ยกเลิก</button><button class="pri" data-s>บันทึก</button></div>`);
   $("[data-c]",m.el).onclick=m.close;
   $("[data-s]",m.el).onclick=async()=>{ const id=$("#bc",m.el).value.trim(); if(!id||!$("#bn",m.el).value.trim()) return toast("กรอกรหัสและชื่อสาขา");
     if(!b&&S.branches[id]) return toast("รหัสสาขานี้มีอยู่แล้ว");
-    const d={zoneId:zid,name:$("#bn",m.el).value.trim(),format:$("#bf",m.el).value,lat:$("#blat",m.el).value?Number($("#blat",m.el).value):null,lng:$("#blng",m.el).value?Number($("#blng",m.el).value):null,updatedAt:FV.serverTimestamp()};
+    const d={zoneId:zid,name:$("#bn",m.el).value.trim(),format:$("#bf",m.el).value,lat:$("#blat",m.el).value?Number($("#blat",m.el).value):null,lng:$("#blng",m.el).value?Number($("#blng",m.el).value):null,radiusM:$("#brad",m.el).value?Number($("#brad",m.el).value):null,updatedAt:FV.serverTimestamp()};
     try{ await db.doc("branches/"+id).set(d,{merge:true}); S.branches[id]={id,...S.branches[id],...d}; m.close(); toast("บันทึกแล้ว"); render(); }catch(e){ toast(e.message,5000); } };
 }
 const PERMS=[
@@ -1112,13 +1207,16 @@ function superHTML(){
      <td>${selHTML("zr-"+z.id,"- ไม่ระบุ -",rms.map(r=>[r.id,r.name]),z.rmId||"")}</td><td class="num">${Object.values(S.branches).filter(b=>b.zoneId===z.id).length}</td><td class="row" style="flex-wrap:nowrap"><button data-zs="${esc(z.id)}">บันทึก</button>${Object.values(S.branches).some(b=>b.zoneId===z.id)?"":`<button class="dan" data-zd="${esc(z.id)}">ลบ</button>`}</td></tr>`).join("")}</tbody></table>
    <div class="row" style="margin-top:8px"><input id="zid" placeholder="รหัสเขต เช่น AM-EAST" style="max-width:180px"><input id="zname" placeholder="ชื่อเขต" style="max-width:200px"><input id="zam" placeholder="ชื่อ AM" style="max-width:180px">${selHTML("zrm","RM ของเขต",rms.map(r=>[r.id,r.name]),"")}<button id="zadd">${IC.plus}เพิ่มเขต</button></div></div>
   <h2>กติการะบบ</h2><div class="card">
-   <div class="row">${Object.keys(DEFAULT_SETTINGS.sla).map(k=>`<div style="min-width:150px"><label>${esc(k)} (วัน)</label><input type="number" min="1" data-sla="${esc(k)}" value="${st.sla[k]}"></div>`).join("")}</div>
-   <div class="row"><div><label>กลางวัน เริ่ม–สิ้นสุด (ชม.)</label><div class="row"><input id="ds" type="number" value="${st.dayStart}" style="width:80px"><input id="de" type="number" value="${st.dayEnd}" style="width:80px"></div></div>
-   <div><label>กลางคืน เริ่ม–สิ้นสุด (ชม.)</label><div class="row"><input id="ns" type="number" value="${st.nightStart}" style="width:80px"><input id="ne" type="number" value="${st.nightEnd}" style="width:80px"></div></div>
-   <div><label>ความมั่นใจ AI ขั้นต่ำ (0–1)</label><input id="th" type="number" step="0.05" value="${st.aiThreshold}" style="width:100px"></div>
-   <div><label>รัศมี GPS (ม.)</label><input id="gr" type="number" value="${st.gpsRadiusM}" style="width:110px"></div></div>
-   <label class="check"><input type="checkbox" id="et" ${st.enforceTime?"checked":""}> บังคับช่วงเวลาถ่ายภาพ</label>
-   <label class="check"><input type="checkbox" id="ar" ${st.alwaysReview?"checked":""}> ต้องให้คนยืนยันผล AI ทุกภาพ (ไม่บันทึกอัตโนมัติแม้ AI ว่าปกติ)</label>
+   <label style="margin-top:0">ระยะเวลาแก้ไข (วัน)</label>
+   <div class="row">${Object.keys(DEFAULT_SETTINGS.sla).map(k=>`<div style="min-width:160px"><label>${esc(SLA_TH[k]||k)}</label><input type="number" min="1" data-sla="${esc(k)}" value="${st.sla[k]}"></div>`).join("")}</div>
+   <div class="row"><div><label>ต้องอัปเดตความคืบหน้าทุก (วัน)</label><input id="pdays" type="number" min="1" value="${st.progressDays}" style="width:110px"></div>
+   <div><label>รอบถ่ายภาพ วันที่ (เริ่ม–สิ้นสุด)</label><div class="row"><input id="rs" type="number" min="1" max="31" value="${st.roundStart}" style="width:80px"><input id="re" type="number" min="1" max="31" value="${st.roundEnd}" style="width:80px"></div></div>
+   <div><label>กลางวัน (ชม.)</label><div class="row"><input id="ds" type="number" value="${st.dayStart}" style="width:70px"><input id="de" type="number" value="${st.dayEnd}" style="width:70px"></div></div>
+   <div><label>กลางคืน (ชม.)</label><div class="row"><input id="ns" type="number" value="${st.nightStart}" style="width:70px"><input id="ne" type="number" value="${st.nightEnd}" style="width:70px"></div></div>
+   <div><label>รัศมี GPS ค่าเริ่มต้น (ม.)</label><input id="gr" type="number" value="${st.gpsRadiusM}" style="width:110px"></div></div>
+   <label class="check"><input type="checkbox" id="er" ${st.enforceRound?"checked":""}> บังคับรอบถ่ายภาพรายเดือน (ลงทะเบียนผัง ถ่ายใหม่ และกลางคืนของป้ายใหม่ ทำได้ทุกวัน)</label>
+   <label class="check"><input type="checkbox" id="et" ${st.enforceTime?"checked":""}> บังคับช่วงเวลากลางวัน/กลางคืน</label>
+   <p class="muted">รัศมี GPS ของแต่ละสาขาตั้งได้ในหน้าสาขาในเขต หรือนำเข้าพร้อมไฟล์โครงสร้าง (คอลัมน์ รัศมี) ถ้าไม่ได้ตั้ง ใช้ค่าเริ่มต้นนี้</p>
    <div class="row" style="justify-content:flex-end"><button class="pri" id="ssave">บันทึกกติกา</button></div></div>`;
 }
 async function syncRMUsers(rmIds){
@@ -1146,7 +1244,8 @@ function bindSuper(app){
     const d={name,amName:$("#zam").value.trim(),rmId:$("#zrm").value,lineGroupId:"",createdAt:FV.serverTimestamp()};
     await db.doc("zones/"+id).set(d); S.zones[id]={id,...d}; await syncRMUsers([d.rmId]); S.f.zone=id; toast("เพิ่มเขตแล้ว"); render(); };
   $("#ssave").onclick=async()=>{ const sla={}; $$("[data-sla]",app).forEach(i=>sla[i.dataset.sla]=Number(i.value)||1);
-    const d={sla,dayStart:+$("#ds").value,dayEnd:+$("#de").value,nightStart:+$("#ns").value,nightEnd:+$("#ne").value,aiThreshold:+$("#th").value,gpsRadiusM:+$("#gr").value,enforceTime:$("#et").checked,alwaysReview:$("#ar").checked};
+    const d={sla,progressDays:+$("#pdays").value||7,roundStart:+$("#rs").value||15,roundEnd:+$("#re").value||20,dayStart:+$("#ds").value,dayEnd:+$("#de").value,nightStart:+$("#ns").value,nightEnd:+$("#ne").value,
+      gpsRadiusM:+$("#gr").value,enforceRound:$("#er").checked,enforceTime:$("#et").checked,v15:true};
     await db.doc("settings/main").set(d,{merge:true}); Object.assign(S.settings,d); toast("บันทึกกติกาแล้ว"); };
 }
 
@@ -1156,12 +1255,15 @@ async function importStructure(file,out){
   try{
     const wb=XLSX.read(await file.arrayBuffer());
     const ws=wb.Sheets["โครงสร้าง"]; if(!ws) throw new Error("ไม่พบชีต “โครงสร้าง” ใช้ไฟล์ Structure_RM_AM_Store.xlsx");
-    const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:"",raw:false}).slice(3);
+    const all=XLSX.utils.sheet_to_json(ws,{header:1,defval:"",raw:false}), hdr=(all[2]||[]).map(x=>String(x).trim());
+    const col=(names,fb)=>{ const i=hdr.findIndex(x=>names.some(n=>x.includes(n))); return i>=0?i:fb; };
+    const C={rmId:col(["รหัส RM"],0),rmName:col(["ชื่อ RM"],1),rmMail:col(["Gmail RM"],2),zId:col(["รหัสเขต"],3),amName:col(["ชื่อ AM"],4),amMail:col(["Gmail AM"],5),code:col(["รหัสสาขา"],6),name:col(["ชื่อสาขา"],7),fmt:col(["รูปแบบ"],8),lat:col(["ละติจูด","lat"],9),lng:col(["ลองจิจูด","lng"],10),rad:col(["รัศมี","radius"],-1)};
+    const rows=all.slice(3);
     const str=v=>String(v==null?"":v).trim(), num=v=>{ const n=parseFloat(String(v).replace(/,/g,"")); return isFinite(n)?n:null; };
     const idOk=s=>/^[A-Za-z0-9_-]+$/.test(s), mailOk=s=>/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(s);
     const rms={}, zones={}, brs={}, users={}, rep=[];
     for(const r of rows){
-      const [rmId,rmName,rmMail,zId,amName,amMail,code,name,fmt,lat,lng]=r.map(str);
+      const g=k=>C[k]>=0?str(r[C[k]]):""; const rmId=g("rmId"),rmName=g("rmName"),rmMail=g("rmMail"),zId=g("zId"),amName=g("amName"),amMail=g("amMail"),code=g("code"),name=g("name"),fmt=g("fmt"),lat=g("lat"),lng=g("lng"),rad=g("rad");
       if(!code&&!zId&&!rmId) continue;
       if(!rmId||!zId||!code||!name){ rep.push(`ข้ามแถวสาขา ${code||"-"}: ข้อมูลไม่ครบ (ต้องมีรหัส RM, รหัสเขต, รหัสและชื่อสาขา)`); continue; }
       if(!idOk(rmId)||!idOk(zId)){ rep.push(`ข้ามสาขา ${code}: รหัส RM/เขต ใช้ได้เฉพาะ A–Z 0–9 - _`); continue; }
@@ -1171,7 +1273,7 @@ async function importStructure(file,out){
       if(ex&&ex.zoneId!==zId&&Object.values(S.slots).some(s=>s.branch===code)){ rep.push(`ไม่ย้ายสาขา ${code}: มีผังป้ายอยู่ในเขต ${ex.zoneId} แล้ว ให้ย้ายด้วยตนเอง`); continue; }
       rms[rmId]={name:rmName||(rms[rmId]||{}).name||rmId};
       zones[zId]={name:amName?`AM ${amName}`:zId, amName, rmId};
-      brs[code]={zoneId:zId,name,format:fmt||"Lotus's",lat:num(lat),lng:num(lng)};
+      brs[code]={zoneId:zId,name,format:fmt||"Lotus's",lat:num(lat),lng:num(lng),...(num(rad)?{radiusM:num(rad)}:{})};
       if(amMail){ if(mailOk(amMail)) users[amMail.toLowerCase()]={role:"am",zoneId:zId,rmId:"",name:amName}; else rep.push(`Gmail AM ไม่ถูกต้อง: ${amMail}`); }
       if(rmMail){ if(mailOk(rmMail)) users[rmMail.toLowerCase()]={role:"rm",zoneId:"",rmId,name:rmName}; else rep.push(`Gmail RM ไม่ถูกต้อง: ${rmMail}`); }
     }
