@@ -153,12 +153,35 @@ h2{font-size:19px;font-weight:700;margin:26px 0 10px}
 .modal .box{background:#fff;border-radius:20px 20px 0 0;max-width:640px;width:100%;max-height:92vh;overflow:auto;padding:20px 18px calc(20px + env(safe-area-inset-bottom,0px))}
 @media(min-width:721px){.modal{align-items:center;padding:16px}.modal .box{border-radius:20px}}
 .modal.full{padding:0;background:#000;align-items:stretch}
-.cam{position:relative;width:100vw;height:100vh;height:100dvh;display:flex;flex-direction:column}
-.cam video{flex:1;width:100%;object-fit:contain;background:#000;min-height:0}
+.cam{position:relative;width:100vw;height:100vh;height:100dvh;display:flex;flex-direction:column;touch-action:none;-webkit-user-select:none;user-select:none}
+.cam-view{position:relative;flex:1;min-height:0;overflow:hidden;background:#000}
+.cam-view video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;transform-origin:center center}
+.cam-zoom{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);display:flex;gap:6px;background:rgba(0,0,0,.45);padding:4px;border-radius:999px;z-index:2}
+.cam-zoom button{min-height:36px;min-width:44px;padding:0 10px;border-radius:999px;border:0;background:transparent;color:#fff;font-size:14px;font-weight:700}
+.cam-zoom button.on{background:var(--sun);color:var(--lotus-dd)}
+.cam-hint{position:absolute;left:12px;right:12px;bottom:64px;text-align:center;color:#fff;font-size:13px;text-shadow:0 1px 2px #000;z-index:2}
 .cam-label{position:absolute;top:calc(12px + env(safe-area-inset-top,0px));left:12px;right:12px;color:#fff;background:rgba(0,70,63,.8);padding:8px 12px;border-radius:12px;font-size:15px;font-weight:500;border-left:4px solid var(--sun)}
-.cam-frame{position:absolute;inset:18% 8% 26%;border:2px dashed rgba(255,255,255,.55);border-radius:12px;pointer-events:none}
+.crop-wrap{position:relative;flex:1;min-height:0;overflow:hidden;background:#000;touch-action:none}
+.crop-wrap img{position:absolute;max-width:none;user-select:none;-webkit-user-drag:none;pointer-events:none}
+.crop-box{position:absolute;border:2px solid #fff;box-shadow:0 0 0 9999px rgba(0,0,0,.55);touch-action:none;cursor:move}
+.crop-box i{position:absolute;width:30px;height:30px;border:4px solid var(--sun);touch-action:none}
+.crop-box i[data-h=tl]{left:-5px;top:-5px;border-right:0;border-bottom:0}.crop-box i[data-h=tr]{right:-5px;top:-5px;border-left:0;border-bottom:0}
+.crop-box i[data-h=bl]{left:-5px;bottom:-5px;border-right:0;border-top:0}.crop-box i[data-h=br]{right:-5px;bottom:-5px;border-left:0;border-top:0}
+.cam-mode{display:flex;gap:6px;justify-content:center;padding:8px;background:#000}
+.cam-mode button{min-height:36px;border-radius:999px;background:transparent;color:#fff;border:1px solid #555;font-size:14px;padding:0 14px}
+.cam-mode button.on{background:var(--sun);color:var(--lotus-dd);border-color:var(--sun);font-weight:700}
+.lay{display:grid;gap:4px;margin:8px 0;max-width:420px}
+.lay button{min-height:40px;padding:2px;border-radius:6px;font-size:12px;background:#E5EBE9;border:2px solid transparent;color:var(--ink)}
+.lay button.sel{border-color:var(--sun);background:var(--sun-l)}
+.lay button.none{background:transparent;border:1px dashed #9aa;color:#9aa}
+.lay button.merged{background:var(--lotus-l);color:var(--lotus-dd);font-weight:700}
+.cam-frame{position:absolute;border:2px dashed #fff;border-radius:6px;pointer-events:none;box-shadow:0 0 0 9999px rgba(0,0,0,.45);z-index:1}
+.cam-frame::before,.cam-frame::after{content:"";position:absolute;width:18px;height:18px;border:3px solid var(--sun)}
+.cam-frame::before{left:-3px;top:-3px;border-right:0;border-bottom:0}.cam-frame::after{right:-3px;bottom:-3px;border-left:0;border-top:0}
 .cam-bar{display:flex;align-items:center;justify-content:space-between;padding:16px 22px calc(16px + env(safe-area-inset-bottom,0px));background:#000}
 .cam-bar button{background:transparent;color:#fff;border-color:#555}
+.cam-bar button.sun{background:var(--sun);border-color:var(--sun);color:var(--lotus-dd)}
+.cam-label{z-index:3}
 .shutter{width:74px;height:74px;border-radius:50%!important;background:#fff!important;border:6px solid var(--sun)!important;padding:0}
 .thumbs{display:flex;gap:10px;flex-wrap:wrap}
 .thumbs figure{margin:0;font-size:13px;color:var(--ink2)}
@@ -219,7 +242,7 @@ button.ghost{border-color:transparent;background:transparent;color:var(--lotus-d
 <script>
 "use strict";
 /* ================= ค่าคงที่ ================= */
-const VERSION = "1.3.4";
+const VERSION = "1.4.0";
 /* ===== ตรวจปัญหาการเริ่มระบบ: แสดงสาเหตุบนหน้าจอแทนการค้างที่ "กำลังโหลด" ===== */
 let BOOTED=false, BOOTMSG=false;
 function bootError(title, detail){
@@ -319,32 +342,97 @@ function haversine(a,b,c,d){ const R=6371000, r=x=>x*Math.PI/180; const x=Math.s
 
 /* ================= กล้อง (ถ่ายสดเท่านั้น) ================= */
 function getGPS(){ return new Promise(res=>{ if(!navigator.geolocation) return res(null); navigator.geolocation.getCurrentPosition(p=>res({lat:+p.coords.latitude.toFixed(6),lng:+p.coords.longitude.toFixed(6),acc:Math.round(p.coords.accuracy)}),()=>res(null),{enableHighAccuracy:true,timeout:8000,maximumAge:60000}); }); }
-function snap(video, maxSide, q, stamp){
-  const w=video.videoWidth, h=video.videoHeight, k=Math.min(1,maxSide/Math.max(w,h));
-  const c=document.createElement("canvas"); c.width=Math.round(w*k); c.height=Math.round(h*k);
-  const x=c.getContext("2d"); x.drawImage(video,0,0,c.width,c.height);
-  if(stamp){ const fs=Math.max(14,Math.round(c.width/55)); x.fillStyle="rgba(0,0,0,.6)"; x.fillRect(0,c.height-fs*2.2,c.width,fs*2.2); x.fillStyle="#fff"; x.font=`${fs}px Tahoma,sans-serif`; x.fillText(stamp,fs*.6,c.height-fs*.75); }
-  return c.toDataURL("image/jpeg",q);
+/* ===== กล้อง =====
+   opts.mode: "overview" (ภาพรวม ไม่มีกรอบ ไม่ตัด) | "night" (ป้ายกลางคืน ไม่ตัด เพื่อเทียบแสงรอบป้าย) | "slot" (ป้ายกลางวัน: ถ่ายแล้วให้ตัดภาพก่อนยืนยัน)
+   opts.aspect: กว้าง/สูง ของป้ายจากทะเบียน ใช้เป็นสัดส่วน "แนวนอน" */
+const CROP_MODES=[["wide","แนวนอน"],["square","ด้าน×ด้าน"],["free","อิสระ"]];
+function cropAspect(mode, signAspect){ if(mode==="square") return 1; if(mode==="free") return null; return (signAspect&&signAspect>1.05)?signAspect:2; }
+function defaultCropMode(signAspect){ return S.cropMode || ((signAspect&&signAspect<1.3)?"square":"wide"); }
+function finishPhoto(canvas, rect, stamp){
+  const r=rect||{x:0,y:0,w:canvas.width,h:canvas.height};
+  const out=(maxSide,q,withStamp)=>{ const k=Math.min(1,maxSide/Math.max(r.w,r.h)); const c=document.createElement("canvas"); c.width=Math.max(1,Math.round(r.w*k)); c.height=Math.max(1,Math.round(r.h*k));
+    const x=c.getContext("2d"); x.drawImage(canvas,r.x,r.y,r.w,r.h,0,0,c.width,c.height);
+    if(withStamp){ const fs=Math.max(12,Math.round(c.width/48)); x.fillStyle="rgba(0,0,0,.6)"; x.fillRect(0,c.height-fs*2.2,c.width,fs*2.2); x.fillStyle="#fff"; x.font=`${fs}px Tahoma,sans-serif`; x.fillText(stamp,fs*.6,c.height-fs*.75); }
+    return c.toDataURL("image/jpeg",q); };
+  return {full:out(1600,.82,true), thumb:out(320,.55,false)};
 }
-function takePhoto(label){
+function takePhoto(label, opts={}){
+  const mode=opts.mode||"overview", signAspect=opts.aspect||null;
   return new Promise(async (resolve,reject)=>{
-    const m=modal(`<div class="cam"><video playsinline autoplay muted></video><div class="cam-frame" aria-hidden="true"></div><div class="cam-label">${esc(label)}</div><div class="cam-bar"><button data-x>ยกเลิก</button><button class="shutter" data-shot aria-label="ถ่ายภาพ"></button><span style="width:72px"></span></div></div>`,{full:true});
+    const m=modal(`<div class="cam"><div class="cam-view"><video playsinline autoplay muted></video>
+      <div class="cam-hint">${mode==="slot"?"ถ่ายให้เห็นป้ายช่องนี้ชัด แล้วตัดภาพในขั้นถัดไป":mode==="night"?"ถ่ายให้เห็นป้ายและแสงรอบป้าย ไม่ต้องตัดภาพ":"ถ่ายให้เห็นทั้งจุด"} · ซูมด้วย 2 นิ้วหรือปุ่มด้านล่าง</div>
+      <div class="cam-zoom">${[1,2,3,4].map(z=>`<button data-z="${z}">${z}×</button>`).join("")}</div></div>
+      <div class="cam-label">${esc(label)}</div><div class="cam-bar"><button data-x>ยกเลิก</button><button class="shutter" data-shot aria-label="ถ่ายภาพ"></button><span style="width:72px"></span></div></div>`,{full:true});
     let stream;
     if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){ m.close(); return reject(new Error(IN_APP?"เปิดผ่านแอป LINE/Facebook กล้องใช้ไม่ได้ กด ⋯ แล้วเลือก “เปิดใน Safari/Chrome”":"เบราว์เซอร์นี้เปิดกล้องไม่ได้ ใช้ Safari (iPhone) หรือ Chrome (Android)")); }
     try{ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1080}},audio:false}); }
     catch(e){ m.close(); const n=e&&e.name;
       return reject(new Error(n==="NotAllowedError"?"ไม่ได้รับอนุญาตใช้กล้อง: iPhone ไปที่ ตั้งค่า > Safari > กล้อง > อนุญาต แล้วโหลดหน้าใหม่":
         n==="NotReadableError"?"กล้องถูกใช้งานโดยแอปอื่นอยู่ ปิดแอปนั้นแล้วลองใหม่":n==="NotFoundError"?"ไม่พบกล้องในอุปกรณ์นี้":"เปิดกล้องไม่ได้ ("+(n||e.message)+")")); }
-    const v=$("video",m.el); v.setAttribute("playsinline",""); v.muted=true; v.srcObject=stream; v.play().catch(()=>{}); const gpsP=getGPS();
-    const stop=()=>stream.getTracks().forEach(t=>t.stop());
-    $("[data-x]",m.el).onclick=()=>{ stop(); m.close(); reject(new Error("cancel")); };
+    const cam=$(".cam",m.el), v=$("video",m.el);
+    v.setAttribute("playsinline",""); v.muted=true; v.srcObject=stream; v.play().catch(()=>{});
+    const gpsP=getGPS(); const track=stream.getVideoTracks()[0];
+    let caps={}; try{ caps=track.getCapabilities?track.getCapabilities():{}; }catch(e){}
+    const hw=!!(caps.zoom&&caps.zoom.max>1); let z=1; const maxZ=hw?Math.min(4,caps.zoom.max):4;
+    const setZoom=nz=>{ z=Math.max(1,Math.min(maxZ,nz));
+      if(hw){ track.applyConstraints({advanced:[{zoom:Math.max(caps.zoom.min||1,Math.min(caps.zoom.max,z))}]}).catch(()=>{}); } else v.style.transform=`scale(${z})`;
+      $$("[data-z]",m.el).forEach(b=>b.classList.toggle("on",Math.abs(+b.dataset.z-z)<.25)); };
+    setZoom(1); $$("[data-z]",m.el).forEach(b=>b.onclick=()=>setZoom(+b.dataset.z));
+    let d0=0, z0=1; const dist=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY), stopG=e=>e.preventDefault();
+    cam.addEventListener("touchstart",e=>{ if(e.touches.length===2){ d0=dist(e.touches); z0=z; e.preventDefault(); } },{passive:false});
+    cam.addEventListener("touchmove",e=>{ if(e.touches.length===2&&d0){ e.preventDefault(); setZoom(z0*dist(e.touches)/d0); } },{passive:false});
+    cam.addEventListener("touchend",()=>{ d0=0; });
+    ["gesturestart","gesturechange","gestureend"].forEach(ev=>document.addEventListener(ev,stopG,{passive:false}));
+    const cleanup=()=>{ stream.getTracks().forEach(t=>t.stop()); ["gesturestart","gesturechange","gestureend"].forEach(ev=>document.removeEventListener(ev,stopG)); m.close(); };
+    $("[data-x]",m.el).onclick=()=>{ cleanup(); reject(new Error("cancel")); };
     $("[data-shot]",m.el).onclick=async ()=>{
       if(!v.videoWidth) return;
-      const at=new Date(); const gps=await gpsP;
+      const at=new Date(); const gps=await gpsP; const vw=v.videoWidth, vh=v.videoHeight, dz=hw?1:z;
+      const vis={x:vw*(1-1/dz)/2, y:vh*(1-1/dz)/2, w:vw/dz, h:vh/dz};
+      const cv=document.createElement("canvas"); cv.width=Math.round(vis.w); cv.height=Math.round(vis.h);
+      cv.getContext("2d").drawImage(v,vis.x,vis.y,vis.w,vis.h,0,0,cv.width,cv.height);
       const stamp=`${label} | ${at.toLocaleString("th-TH")}${gps?` | ${gps.lat},${gps.lng}`:" | ไม่มี GPS"}`;
-      const full=snap(v,1600,0.82,stamp), thumb=snap(v,320,0.55,null);
-      stop(); m.close(); resolve({full,thumb,gps,at});
+      cleanup();
+      if(mode!=="slot"){ const o=finishPhoto(cv,null,stamp); return resolve({...o,gps,at,zoom:z,cropped:false}); }
+      cropEditor(cv,label,signAspect).then(rect=>{ const o=finishPhoto(cv,rect,stamp); resolve({...o,gps,at,zoom:z,cropped:true}); })
+        .catch(err=>{ if(err.message==="retake") takePhoto(label,opts).then(resolve,reject); else reject(err); });
     };
+  });
+}
+/* หน้าตัดภาพ: ลากกรอบเพื่อย้าย ลากมุมเหลืองเพื่อปรับขนาด เลือกสัดส่วน แนวนอน / ด้าน×ด้าน / อิสระ */
+function cropEditor(canvas, label, signAspect){
+  return new Promise((resolve,reject)=>{
+    let mode=defaultCropMode(signAspect);
+    const m=modal(`<div class="cam"><div class="cam-label">ตัดภาพเฉพาะป้าย · ${esc(label)}</div><div class="crop-wrap"><img alt="ภาพที่ถ่าย"><div class="crop-box"><i data-h="tl"></i><i data-h="tr"></i><i data-h="bl"></i><i data-h="br"></i></div></div>
+      <div class="cam-mode">${CROP_MODES.map(([k,t])=>`<button data-m="${k}">${t}</button>`).join("")}</div>
+      <div class="cam-bar"><button data-re>ถ่ายใหม่</button><button class="sun" data-ok style="min-width:130px">ใช้ภาพนี้</button></div></div>`,{full:true});
+    const wrap=$(".crop-wrap",m.el), img=$("img",m.el), box=$(".crop-box",m.el), W=canvas.width, H=canvas.height;
+    img.src=canvas.toDataURL("image/jpeg",.9);
+    let D={s:1,ox:0,oy:0}, R={x:0,y:0,w:W,h:H};
+    const fit=()=>{ const cw=wrap.clientWidth, ch=wrap.clientHeight, s=Math.min(cw/W,ch/H); D={s,ox:(cw-W*s)/2,oy:(ch-H*s)/2};
+      Object.assign(img.style,{width:W*s+"px",height:H*s+"px",left:D.ox+"px",top:D.oy+"px"}); draw(); };
+    const draw=()=>Object.assign(box.style,{left:D.ox+R.x*D.s+"px",top:D.oy+R.y*D.s+"px",width:R.w*D.s+"px",height:R.h*D.s+"px"});
+    const clamp=()=>{ R.w=Math.min(R.w,W); R.h=Math.min(R.h,H); R.x=Math.max(0,Math.min(W-R.w,R.x)); R.y=Math.max(0,Math.min(H-R.h,R.y)); };
+    const init=()=>{ const a=cropAspect(mode,signAspect); let w=W*.62, hh=a?w/a:H*.45; if(hh>H*.6){ hh=H*.6; if(a) w=hh*a; } R={x:(W-w)/2,y:(H-hh)/2,w,h:hh}; clamp(); draw();
+      $$("[data-m]",m.el).forEach(b=>b.classList.toggle("on",b.dataset.m===mode)); };
+    $$("[data-m]",m.el).forEach(b=>b.onclick=()=>{ mode=b.dataset.m; S.cropMode=mode; init(); });
+    let drag=null; const MIN=60;
+    const down=e=>{ e.preventDefault(); const h=e.target.dataset.h||"move"; drag={h,px:e.clientX,py:e.clientY,r:{...R}}; box.setPointerCapture&&box.setPointerCapture(e.pointerId); };
+    const move=e=>{ if(!drag) return; e.preventDefault(); const dx=(e.clientX-drag.px)/D.s, dy=(e.clientY-drag.py)/D.s, o=drag.r, a=cropAspect(mode,signAspect);
+      if(drag.h==="move"){ R.x=o.x+dx; R.y=o.y+dy; clamp(); return draw(); }
+      let x1=o.x, y1=o.y, x2=o.x+o.w, y2=o.y+o.h;
+      if(drag.h.includes("l")) x1=Math.min(x2-MIN,Math.max(0,o.x+dx)); if(drag.h.includes("r")) x2=Math.max(x1+MIN,Math.min(W,x2+dx));
+      if(drag.h.includes("t")) y1=Math.min(y2-MIN,Math.max(0,o.y+dy)); if(drag.h.includes("b")) y2=Math.max(y1+MIN,Math.min(H,y2+dy));
+      let w=x2-x1, hh=y2-y1;
+      if(a){ hh=w/a; if(drag.h.includes("t")) y1=y2-hh; else y2=y1+hh; if(y1<0||y2>H){ hh=Math.min(hh,drag.h.includes("t")?y2:H-y1); w=hh*a; if(drag.h.includes("l")) x1=x2-w; else x2=x1+w; if(drag.h.includes("t")) y1=y2-hh; else y2=y1+hh; } }
+      R={x:x1,y:y1,w:x2-x1,h:y2-y1}; clamp(); draw(); };
+    const up=()=>{ drag=null; };
+    box.addEventListener("pointerdown",down); window.addEventListener("pointermove",move,{passive:false}); window.addEventListener("pointerup",up);
+    const stopG=e=>e.preventDefault(); ["gesturestart","gesturechange"].forEach(ev=>document.addEventListener(ev,stopG,{passive:false}));
+    const done=()=>{ window.removeEventListener("pointermove",move); window.removeEventListener("pointerup",up); window.removeEventListener("resize",fit); ["gesturestart","gesturechange"].forEach(ev=>document.removeEventListener(ev,stopG)); m.close(); };
+    img.onload=()=>{ fit(); init(); }; window.addEventListener("resize",fit);
+    $("[data-re]",m.el).onclick=()=>{ done(); reject(new Error("retake")); };
+    $("[data-ok]",m.el).onclick=()=>{ const r={x:Math.round(R.x),y:Math.round(R.y),w:Math.round(R.w),h:Math.round(R.h)}; done(); resolve(r); };
   });
 }
 
@@ -481,15 +569,14 @@ function exportCSV(slots){
 
 /* ================= หน้าสาขา + ผังป้าย ================= */
 function pylonHTML(p, slots, curKey){
-  const t=typeOf(p); const rows=Math.max(p.rows||1,...slots.map(s=>s.row||1)), cols=Math.max(p.cols||1,...slots.map(s=>s.col||1));
-  const at={}; slots.forEach(s=>at[`${s.row}-${s.col}`]=s);
+  const t=typeOf(p), rs=s=>s.rowSpan||1, cs=s=>s.colSpan||1;
+  const rows=Math.max(p.rows||1,...slots.map(s=>(s.row||1)+rs(s)-1)), cols=Math.max(p.cols||1,...slots.map(s=>(s.col||1)+cs(s)-1));
+  const cover={}; slots.forEach(s=>{ for(let r=s.row;r<s.row+rs(s);r++) for(let c=s.col;c<s.col+cs(s);c++) cover[`${r}-${c}`]=1; });
   let cells="";
-  for(let r=1;r<=rows;r++) for(let c=1;c<=cols;c++){
-    const s=at[`${r}-${c}`], key=`${r}-${c}`, cur=curKey===key?" cur":"";
-    if(!s){ cells+=`<div class="tile skip${cur}" style="grid-row:${r};grid-column:${c}"></div>`; continue; }
-    const cls=COND_CLS[s.condition||"ยังไม่ตรวจ"]||"none";
-    cells+=`<button class="tile c-${cls}${cls==="empty"?" empty":""}${cur}" data-slot="${esc(s.id)}" style="grid-row:${r};grid-column:${c}" title="${esc(s.id)}"><b>${String(s.no).padStart(2,"0")}</b><span>${esc(s.tenant|| (cls==="empty"?"ว่าง":"—"))}</span></button>`;
-  }
+  for(let r=1;r<=rows;r++) for(let c=1;c<=cols;c++) if(!cover[`${r}-${c}`]) cells+=`<div class="tile skip" style="grid-row:${r};grid-column:${c}"></div>`;
+  slots.forEach(s=>{ const key=`${s.row}-${s.col}`, cur=curKey===key?" cur":"", cls=COND_CLS[s.condition||"ยังไม่ตรวจ"]||"none", pos=`grid-row:${s.row} / span ${rs(s)};grid-column:${s.col} / span ${cs(s)}`;
+    cells+=s.pending?`<div class="tile c-none${cur}" style="${pos};opacity:.55"><b>…</b><span>รอถ่าย</span></div>`
+      :`<button class="tile c-${cls}${cls==="empty"?" empty":""}${cur}" data-slot="${esc(s.id||"")}" style="${pos}" title="${esc(s.id||"")}"><b>${String(s.no).padStart(2,"0")}</b><span>${esc(s.tenant|| (cls==="empty"?"ว่าง":"—"))}</span></button>`; });
   return `<div style="display:inline-block;max-width:100%"><div class="pylon"><div class="head"><span>${esc(t.name)} ${esc(p.structNo)}${p.side&&p.side!=="-"?" · ฝั่ง "+esc(p.side):""}</span><span>${p.lit?"มีไฟ":""}</span></div>
     <div class="pgrid" style="grid-template-columns:repeat(${cols},minmax(74px,1fr))">${cells}</div></div>${t.legs?'<div class="legs"><i></i><i></i></div>':""}</div>`;
 }
@@ -574,19 +661,48 @@ async function viewRegister(app, code){
    <div class="grow"><label>ทิศทางจราจร</label><select id="dir"><option value="">-</option><option>ขาเข้า</option><option>ขาออก</option></select></div></div>
    <div class="row"><div class="grow"><label>จำนวนแถว (บน→ล่าง)</label><input id="rows" type="number" min="1" max="20" value="4"></div>
    <div class="grow"><label>จำนวนคอลัมน์ (ซ้าย→ขวา)</label><input id="cols" type="number" min="1" max="12" value="3"></div></div>
-   <p class="muted">ผังไม่เป็นตารางเต็ม เช่น บางแถวมีช่องเดียว ให้ใส่ขนาดตารางที่ใหญ่ที่สุด แล้วกด “ไม่มีช่องตรงนี้” ในตำแหน่งที่ว่าง</p>
+   <label>ผังช่องป้าย (แตะเลือกช่องที่ติดกัน แล้วกดรวม)</label><div id="lay" class="lay"></div>
+   <div class="row"><button id="lmerge">รวมช่องที่เลือก</button><button id="lnone">ไม่มีป้ายตรงนี้</button><button id="lreset" class="ghost">เริ่มผังใหม่</button></div>
+   <p class="muted" id="laymsg">เช่น ป้าย 4 แถว 2 คอลัมน์ แต่แถวบนเป็นป้ายเดียว ให้แตะ 2 ช่องบนสุด แล้วกด “รวมช่องที่เลือก”</p>
    <label class="check"><input type="checkbox" id="lit"> จุดนี้มีป้ายไฟ</label>
    <p id="pidPrev" class="muted"></p>
    <div class="row" style="justify-content:flex-end"><button class="pri" id="go">${IC.cam}ถ่ายภาพรวมของจุดนี้</button></div></div>`;
   const prev=()=>{ const id=pointIdOf(code,$("#ty").value,$("#sn").value||"?",$("#sd").value); $("#pidPrev").textContent="รหัสจุด: "+id+(S.points[id]?" (มีอยู่แล้ว)":""); };
+  // ---- ตัวแก้ผัง: regions = [{row,col,rowSpan,colSpan}], none = ช่องที่ไม่มีป้าย
+  let L={rows:0,cols:0,regions:[],none:new Set(),sel:new Set()};
+  const resetLay=()=>{ const R=Math.max(1,Math.min(20,+$("#rows").value||1)), Cc=Math.max(1,Math.min(12,+$("#cols").value||1));
+    L={rows:R,cols:Cc,regions:[],none:new Set(),sel:new Set()}; for(let r=1;r<=R;r++) for(let c=1;c<=Cc;c++) L.regions.push({row:r,col:c,rowSpan:1,colSpan:1}); drawLay(); };
+  const regAt=(r,c)=>L.regions.find(g=>r>=g.row&&r<g.row+g.rowSpan&&c>=g.col&&c<g.col+g.colSpan);
+  const drawLay=()=>{ const el=$("#lay"); el.style.gridTemplateColumns=`repeat(${L.cols},1fr)`; let html="";
+    for(let r=1;r<=L.rows;r++) for(let c=1;c<=L.cols;c++){ const k=`${r}-${c}`;
+      if(L.none.has(k)){ html+=`<button data-k="${k}" class="none ${L.sel.has(k)?"sel":""}" style="grid-row:${r};grid-column:${c}">ไม่มี</button>`; continue; }
+      const g=regAt(r,c); if(!g||g.row!==r||g.col!==c) continue;
+      const sel=[...Array(g.rowSpan)].some((_,i)=>[...Array(g.colSpan)].some((_,j)=>L.sel.has(`${r+i}-${c+j}`)));
+      html+=`<button data-k="${k}" class="${g.rowSpan*g.colSpan>1?"merged":""} ${sel?"sel":""}" style="grid-row:${r} / span ${g.rowSpan};grid-column:${c} / span ${g.colSpan}">${g.rowSpan*g.colSpan>1?"รวม "+g.rowSpan+"×"+g.colSpan:r+"-"+c}</button>`; }
+    el.innerHTML=html;
+    $$("#lay [data-k]").forEach(b=>b.onclick=()=>{ const [r,c]=b.dataset.k.split("-").map(Number), g=regAt(r,c);
+      const keys=g?[...Array(g.rowSpan)].flatMap((_,i)=>[...Array(g.colSpan)].map((_,j)=>`${g.row+i}-${g.col+j}`)):[b.dataset.k];
+      const on=keys.some(k=>L.sel.has(k)); keys.forEach(k=>on?L.sel.delete(k):L.sel.add(k)); drawLay(); });
+    const n=L.regions.length; $("#laymsg").textContent=`ผังนี้มี ${n} ป้าย`+(L.sel.size?` · เลือกอยู่ ${L.sel.size} ช่อง`:""); };
+  $("#lmerge").onclick=()=>{ const ks=[...L.sel].map(k=>k.split("-").map(Number)); if(ks.length<2) return toast("แตะเลือกอย่างน้อย 2 ช่องที่อยู่ติดกัน");
+    const r1=Math.min(...ks.map(k=>k[0])), r2=Math.max(...ks.map(k=>k[0])), c1=Math.min(...ks.map(k=>k[1])), c2=Math.max(...ks.map(k=>k[1]));
+    if(ks.length!==(r2-r1+1)*(c2-c1+1)) return toast("ช่องที่เลือกต้องเป็นรูปสี่เหลี่ยมเต็ม ไม่เว้นช่อง");
+    for(let r=r1;r<=r2;r++) for(let c=c1;c<=c2;c++){ if(L.none.has(`${r}-${c}`)) return toast("มีช่องที่ตั้งเป็น ‘ไม่มีป้าย’ อยู่ในส่วนที่เลือก"); }
+    L.regions=L.regions.filter(g=>!(g.row>=r1&&g.row<=r2&&g.col>=c1&&g.col<=c2)); L.regions.push({row:r1,col:c1,rowSpan:r2-r1+1,colSpan:c2-c1+1}); L.sel.clear(); drawLay(); };
+  $("#lnone").onclick=()=>{ if(!L.sel.size) return toast("แตะเลือกช่องที่ไม่มีป้ายก่อน");
+    [...L.sel].forEach(k=>{ const [r,c]=k.split("-").map(Number), g=regAt(r,c); if(g){ L.regions=L.regions.filter(x=>x!==g); for(let i=0;i<g.rowSpan;i++) for(let j=0;j<g.colSpan;j++) L.none.add(`${g.row+i}-${g.col+j}`); } else if(L.none.has(k)){ L.none.delete(k); L.regions.push({row:r,col:c,rowSpan:1,colSpan:1}); } });
+    L.sel.clear(); drawLay(); };
+  $("#lreset").onclick=resetLay; $$("#rows,#cols",app).forEach(e=>e.oninput=resetLay); resetLay();
   $$("#ty,#sn,#sd",app).forEach(e=>e.oninput=prev); $("#ty").onchange=()=>{ if(!TYPE[$("#ty").value].sided) $("#sd").value="-"; prev(); }; prev();
   $("#go").onclick=async()=>{
     const P={branch:code, zoneId:b.zoneId, typeCode:$("#ty").value, structNo:Number($("#sn").value), side:$("#sd").value, sideName:$("#sname").value.trim(), road:$("#road").value.trim(), direction:$("#dir").value, rows:Number($("#rows").value), cols:Number($("#cols").value), lit:$("#lit").checked};
     if(!P.structNo||!P.rows||!P.cols) return toast("กรอกลำดับโครงสร้าง จำนวนแถว และคอลัมน์");
+    if(!L.regions.length) return toast("ผังนี้ไม่มีช่องป้าย");
+    P.regions=L.regions.map(g=>({...g})).sort((a,b)=>a.row-b.row||a.col-b.col);
     if(P.side!=="-"&&!P.sideName) return toast("ใส่ชื่อฝั่งหรือชื่อประตู เพื่อให้คนถ่ายภาพรอบถัดไปเลือกฝั่งถูก");
     P.id=pointIdOf(code,P.typeCode,P.structNo,P.side);
     if(S.points[P.id]) return toast("รหัสจุดนี้มีอยู่แล้ว ใช้ปุ่มถ่ายภาพตรวจของจุดเดิม หรือเปลี่ยนลำดับ/ฝั่ง");
-    let ov; try{ ov=await takePhoto(`${P.id} ภาพรวม`); }catch(e){ if(e.message!=="cancel") toast(e.message,5000); return; }
+    let ov; try{ ov=await takePhoto(`${P.id} ภาพรวม`,{mode:"overview"}); }catch(e){ if(e.message!=="cancel") toast(e.message,5000); return; }
     if(!checkGPS(b,ov.gps)) return;
     try{ if((await db.doc("points/"+P.id).get()).exists) return toast("รหัสจุดนี้มีอยู่แล้ว ใช้ปุ่มถ่ายภาพตรวจของจุดเดิม หรือเปลี่ยนลำดับ/ฝั่ง",5000); }catch(e){}
     const btn=$("#go"); busy(btn,true,"กำลังอัปโหลดภาพรวม…");
@@ -602,25 +718,26 @@ function checkGPS(b, gps){
   if(d>S.settings.gpsRadiusM){ toast(`ตำแหน่งห่างจากสาขา ${Math.round(d)} ม. เกินที่กำหนด ${S.settings.gpsRadiusM} ม.`,5000); return isSuper()||isAM(); }
   return true;
 }
+const cellLabel=g=>(g.rowSpan||1)*(g.colSpan||1)>1?`ช่องรวม แถว ${g.row}–${g.row+(g.rowSpan||1)-1} คอลัมน์ ${g.col}–${g.col+(g.colSpan||1)-1}`:`แถว ${g.row} คอลัมน์ ${g.col}`;
 function regSlots(app,b,P){
-  const cells=[]; for(let r=1;r<=P.rows;r++) for(let c=1;c<=P.cols;c++) cells.push({row:r,col:c});
+  const cells=P.regions;
   let i=0, no=0; const done=[]; let last={w:"",h:"",lit:P.lit};
   const step=()=>{
     if(i>=cells.length) return regSave(app,b,P,done);
-    const cell=cells[i], tmp=done.map(d=>({...d,condition:d.ai&&d.ai.category||"ยังไม่ตรวจ"}));
-    app.innerHTML=`<h1>ลงทะเบียน ${esc(P.id)}</h1><div class="card"><div class="stepbar"><i class="on"></i><i class="on"></i><i></i></div><div class="step">ขั้นที่ 2 จาก 3 · ช่องที่ตำแหน่ง แถว ${cell.row} คอลัมน์ ${cell.col} (${i+1}/${cells.length})</div>
+    const cell=cells[i], tmp=done.map(d=>({...d,condition:d.ai&&d.ai.category||"ยังไม่ตรวจ"})).concat(cells.slice(i).map(g=>({...g,pending:true})));
+    app.innerHTML=`<h1>ลงทะเบียน ${esc(P.id)}</h1><div class="card"><div class="stepbar"><i class="on"></i><i class="on"></i><i></i></div><div class="step">ขั้นที่ 2 จาก 3 · ${cellLabel(cell)} (${i+1}/${cells.length})</div>
       <div style="margin:10px 0">${pylonHTML({...P},tmp,`${cell.row}-${cell.col}`)}</div>
       <div class="row"><div class="grow"><label>กว้าง (ซม.)</label><input id="w" type="number" value="${esc(last.w)}"></div><div class="grow"><label>สูง (ซม.)</label><input id="h" type="number" value="${esc(last.h)}"></div></div>
       <label>ชื่อร้าน/แบรนด์ที่เห็นบนป้าย (ไม่ทราบให้เว้นว่าง)</label><input id="tn">
       <label class="check"><input type="checkbox" id="sl" ${last.lit?"checked":""}> ช่องนี้มีไฟ</label>
       <div id="res" class="muted"></div>
-      <div class="row" style="margin-top:10px"><button id="skip">ไม่มีช่องตรงนี้</button><span class="grow"></span><button class="pri" id="shot">${IC.cam}ถ่ายภาพช่องนี้</button></div></div>`;
+      <div class="row" style="margin-top:10px"><button id="skip">ข้ามช่องนี้</button><span class="grow"></span><button class="pri" id="shot">${IC.cam}ถ่ายภาพช่องนี้</button></div></div>`;
     $("#skip").onclick=()=>{ i++; step(); };
     $("#shot").onclick=async e=>{
-      let ph; try{ ph=await takePhoto(`${P.id} แถว${cell.row} คอลัมน์${cell.col}`); }catch(err){ if(err.message!=="cancel") toast(err.message); return; }
+      let ph; try{ ph=await takePhoto(`${P.id} ${cellLabel(cell)}`,{mode:"slot",aspect:(+$("#w").value&&+$("#h").value)?(+$("#w").value)/(+$("#h").value):null}); }catch(err){ if(err.message!=="cancel") toast(err.message); return; }
       busy(e.target,true,"กำลังอัปโหลดและให้ AI ตรวจ…");
       const sNo=no+1, sid=slotIdOf(P.id,sNo);
-      const slot={id:sid, pointId:P.id, branch:b.id, zoneId:b.zoneId, typeCode:P.typeCode, no:sNo, row:cell.row, col:cell.col,
+      const slot={id:sid, pointId:P.id, branch:b.id, zoneId:b.zoneId, typeCode:P.typeCode, no:sNo, row:cell.row, col:cell.col, rowSpan:cell.rowSpan||1, colSpan:cell.colSpan||1,
         w:$("#w").value?Number($("#w").value):null, h:$("#h").value?Number($("#h").value):null, lit:$("#sl").checked, tenant:$("#tn").value.trim()};
       try{ const r=await analyzeSlot(slot,"day",ph,{noBaseline:true}); Object.assign(slot,{photo:ph,fileId:r.fileId,url:r.url,ai:r.ai});
         no++; done.push(slot); last={w:$("#w").value,h:$("#h").value,lit:slot.lit};
@@ -643,7 +760,7 @@ async function regSave(app,b,P,slots){
     ops.push([db.doc("thumbs/"+P.id),{zoneId:P.zoneId,branch:P.branch,day:P.overview.thumb,dayUrl:P.overview.url,dayMonth:mk}]);
     for(const s of slots){
       const auto=aiOK(s.ai), cond=auto?"ปกติ":"ยังไม่ตรวจ";
-      ops.push([db.doc("slots/"+s.id),{pointId:s.pointId,branch:s.branch,zoneId:s.zoneId,typeCode:s.typeCode,no:s.no,row:s.row,col:s.col,w:s.w,h:s.h,lit:s.lit,tenant:s.tenant,
+      ops.push([db.doc("slots/"+s.id),{pointId:s.pointId,branch:s.branch,zoneId:s.zoneId,typeCode:s.typeCode,no:s.no,row:s.row,col:s.col,rowSpan:s.rowSpan||1,colSpan:s.colSpan||1,w:s.w,h:s.h,lit:s.lit,tenant:s.tenant,
         contract:"ไม่ทราบสถานะ-รอตรวจสอบ",condition:cond,baseFileIdDay:s.fileId,baseUrlDay:s.url,lastFileId:s.fileId,lastUrl:s.url,lastInspectedAt:now,createdAt:now,updatedAt:now}]);
       ops.push([db.doc("thumbs/"+s.id),{zoneId:s.zoneId,branch:s.branch,baseDay:s.photo.thumb,last:s.photo.thumb}]);
       ops.push([db.collection("inspections").doc(),{slotId:s.id,pointId:s.pointId,branch:s.branch,zoneId:s.zoneId,shift:"day",month:mk,fileId:s.fileId,url:s.url,thumb:s.photo.thumb,
@@ -671,7 +788,7 @@ async function viewInspect(app, pid){
 }
 async function runInspect(app,p,b,shift){
   const shTH=shift==="day"?"กลางวัน":"กลางคืน", mk=monthKey();
-  let ov; try{ ov=await takePhoto(`${p.id} ภาพรวม ${shTH}`); }catch(e){ if(e.message!=="cancel") toast(e.message); return; }
+  let ov; try{ ov=await takePhoto(`${p.id} ภาพรวม ${shTH}`,{mode:"overview"}); }catch(e){ if(e.message!=="cancel") toast(e.message); return; }
   if(!checkGPS(b,ov.gps)) return;
   app.innerHTML=`<div class="card">กำลังอัปโหลดภาพรวม…</div>`;
   let ovr; try{ ovr=await callScript(p.zoneId,{action:"upload",image:ov.full,branch:p.branch,name:`${p.id}_overview_${shift}`,month:mk}); }catch(e){ toast(e.message,5000); return go("inspect/"+p.id); }
@@ -688,7 +805,7 @@ async function runInspect(app,p,b,shift){
     $("#skip").onclick=async()=>{ const why=prompt("เหตุผลที่ถ่ายไม่ได้ เช่น มีรถบัง, ป้ายถูกรื้อ"); if(!why) return;
       results.push({s,skip:why}); await db.collection("inspections").add({slotId:s.id,pointId:p.id,branch:s.branch,zoneId:s.zoneId,shift,month:mk,status:"review",kind:"skip",note:why,ai:{},takenBy:S.me.email,takenAt:FV.serverTimestamp()}); i++; step(); };
     $("#shot").onclick=async e=>{
-      let ph; try{ ph=await takePhoto(`${s.id} ${shTH}`); }catch(err){ if(err.message!=="cancel") toast(err.message); return; }
+      let ph; try{ ph=await takePhoto(`${s.id} ${shTH}`,{mode:shift==="night"?"night":"slot",aspect:(s.w&&s.h)?s.w/s.h:null}); }catch(err){ if(err.message!=="cancel") toast(err.message); return; }
       busy(e.target,true,"กำลังอัปโหลดและให้ AI ตรวจ…");
       try{
         const r=await analyzeSlot(s,shift,ph);
@@ -730,7 +847,7 @@ async function viewReview(app){
     const base=r.shift==="night"?th.baseNight:th.baseDay; const sug=COND.includes(r.ai&&r.ai.category)?r.ai.category:(s.condition||"ยังไม่ตรวจ");
     const el=document.createElement("div"); el.className="card";
     el.innerHTML=`<div class="row"><b class="grow">${esc(r.slotId)}</b><span class="muted">${esc((S.branches[r.branch]||{}).name||r.branch)} · ${r.shift==="night"?"กลางคืน":"กลางวัน"} · ${dTH(r.takenAt)}</span></div>
-     <p>ร้านในทะเบียน: ${esc(s.tenant||"-")} · AI: ${r.kind==="skip"?"ถ่ายไม่ได้ — "+esc(r.note):`<b>${esc((r.ai&&r.ai.category)||"ไม่มีผล")}</b> (ความมั่นใจ ${Math.round((r.ai&&r.ai.confidence||0)*100)}%) ${esc(r.ai&&r.ai.note||r.ai&&r.ai.error||"")}`}</p>
+     <p>ร้านในทะเบียน: ${esc(s.tenant||"-")} · AI: ${r.kind==="skip"?"ถ่ายไม่ได้ — "+esc(r.note):`<b>${esc((r.ai&&r.ai.category)||"ไม่มีผล")}</b> (ความมั่นใจ ${Math.round((r.ai&&r.ai.confidence||0)*100)}%) ${r.ai&&r.ai.error?`<span class="red">AI ใช้งานไม่ได้</span> <span class="muted">${esc(String(r.ai.error).replace(/\{[\s\S]*/,"").slice(0,60))}</span>`:esc(r.ai&&r.ai.note||"")}`}</p>
      <div class="thumbs">${base?`<figure><img src="${base}" alt="ภาพต้นแบบ"><figcaption>ต้นแบบ</figcaption></figure>`:""}${r.thumb?`<figure><img src="${r.thumb}" alt="ภาพที่ถ่าย"><figcaption>ภาพที่ถ่าย${r.url?` · <a href="${esc(r.url)}" target="_blank" rel="noopener">ภาพเต็ม</a>`:""}</figcaption></figure>`:""}</div>
      <div class="row" style="margin-top:8px"><select class="grow" data-f>${COND.filter(c=>c!=="ยังไม่ตรวจ").map(c=>`<option ${c===sug?"selected":""}>${esc(c)}</option>`).join("")}</select></div>
      ${r.thumb?'<label class="check"><input type="checkbox" data-base> ใช้ภาพนี้เป็นภาพต้นแบบใหม่ (เช่น เปลี่ยนป้ายใหม่แล้ว)</label>':""}
@@ -787,7 +904,7 @@ function closeTicket(t){
   $("[data-go]",m.el).onclick=async e=>{
     const result=$("#res",m.el).value, ftn=$("#ftn",m.el).value.trim();
     if(result==="ป้ายทดแทน"&&!ftn) return toast("ใส่ชื่อป้ายทดแทน");
-    let ph; try{ ph=await takePhoto(`${t.slotId} หลังแก้`); }catch(err){ if(err.message!=="cancel") toast(err.message); return; }
+    let ph; try{ ph=await takePhoto(`${t.slotId} หลังแก้`,{mode:t.shift==="night"?"night":"slot",aspect:(s.w&&s.h)?s.w/s.h:null}); }catch(err){ if(err.message!=="cancel") toast(err.message); return; }
     busy(e.target,true,"กำลังอัปโหลดและให้ AI ตรวจ…");
     try{
       const r=await analyzeSlot(s,t.shift||"day",ph,{noBaseline:result==="ป้ายทดแทน",expectedTenant:result==="ป้ายทดแทน"?ftn:s.tenant});
