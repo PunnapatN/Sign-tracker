@@ -219,7 +219,7 @@ button.ghost{border-color:transparent;background:transparent;color:var(--lotus-d
 <script>
 "use strict";
 /* ================= ค่าคงที่ ================= */
-const VERSION = "1.3.2";
+const VERSION = "1.3.4";
 /* ===== ตรวจปัญหาการเริ่มระบบ: แสดงสาเหตุบนหน้าจอแทนการค้างที่ "กำลังโหลด" ===== */
 let BOOTED=false, BOOTMSG=false;
 function bootError(title, detail){
@@ -233,6 +233,10 @@ setTimeout(()=>{ if(!BOOTED) bootError("โหลดนานผิดปกต�
 if(typeof firebase==="undefined"){ bootError("โหลดไลบรารี Firebase ไม่ได้","อินเทอร์เน็ตหรือเครือข่ายบริษัทอาจบล็อก gstatic.com ลองใช้เน็ตมือถือ"); throw new Error("no firebase"); }
 if(!window.APP_CONFIG||!window.APP_CONFIG.firebase){ bootError("ไม่พบไฟล์ config.js หรือไฟล์มีข้อผิดพลาด","ตรวจว่าอัปโหลด config.js ไว้โฟลเดอร์เดียวกับ index.html และเครื่องหมายคำพูดเป็น \" ตรง ๆ ไม่ใช่ “ ” และมีจุลภาคครบทุกบรรทัด"); throw new Error("no config"); }
 if(JSON.stringify(window.APP_CONFIG.firebase).includes("ใส่ค่า")){ bootError("ยังไม่ได้ใส่ค่า Firebase ใน config.js","คัดลอกค่า firebaseConfig จาก Firebase > Project settings > Your apps มาแทนคำว่า “ใส่ค่า” ให้ครบทุกบรรทัด"); throw new Error("config placeholder"); }
+const IN_APP=/\bLine\/|FBAN|FBAV|Instagram|MicroMessenger/i.test(navigator.userAgent);
+if(/\bLine\//i.test(navigator.userAgent)&&!/openExternalBrowser=1/.test(location.search)){
+  const u=new URL(location.href); u.searchParams.set("openExternalBrowser","1"); location.replace(u.toString());
+}
 const C = window.APP_CONFIG;
 firebase.initializeApp(C.firebase);
 const auth = firebase.auth(), db = firebase.firestore();
@@ -326,9 +330,12 @@ function takePhoto(label){
   return new Promise(async (resolve,reject)=>{
     const m=modal(`<div class="cam"><video playsinline autoplay muted></video><div class="cam-frame" aria-hidden="true"></div><div class="cam-label">${esc(label)}</div><div class="cam-bar"><button data-x>ยกเลิก</button><button class="shutter" data-shot aria-label="ถ่ายภาพ"></button><span style="width:72px"></span></div></div>`,{full:true});
     let stream;
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){ m.close(); return reject(new Error(IN_APP?"เปิดผ่านแอป LINE/Facebook กล้องใช้ไม่ได้ กด ⋯ แล้วเลือก “เปิดใน Safari/Chrome”":"เบราว์เซอร์นี้เปิดกล้องไม่ได้ ใช้ Safari (iPhone) หรือ Chrome (Android)")); }
     try{ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1080}},audio:false}); }
-    catch(e){ m.close(); return reject(new Error("เปิดกล้องไม่ได้ ให้อนุญาตการใช้กล้องในเบราว์เซอร์ แล้วลองอีกครั้ง")); }
-    const v=$("video",m.el); v.srcObject=stream; const gpsP=getGPS();
+    catch(e){ m.close(); const n=e&&e.name;
+      return reject(new Error(n==="NotAllowedError"?"ไม่ได้รับอนุญาตใช้กล้อง: iPhone ไปที่ ตั้งค่า > Safari > กล้อง > อนุญาต แล้วโหลดหน้าใหม่":
+        n==="NotReadableError"?"กล้องถูกใช้งานโดยแอปอื่นอยู่ ปิดแอปนั้นแล้วลองใหม่":n==="NotFoundError"?"ไม่พบกล้องในอุปกรณ์นี้":"เปิดกล้องไม่ได้ ("+(n||e.message)+")")); }
+    const v=$("video",m.el); v.setAttribute("playsinline",""); v.muted=true; v.srcObject=stream; v.play().catch(()=>{}); const gpsP=getGPS();
     const stop=()=>stream.getTracks().forEach(t=>t.stop());
     $("[data-x]",m.el).onclick=()=>{ stop(); m.close(); reject(new Error("cancel")); };
     $("[data-shot]",m.el).onclick=async ()=>{
@@ -394,6 +401,10 @@ function renderNav(){
 async function render(){
   if(!S.me) return;
   const [r,...args]=location.hash.replace(/^#\//,"").split("/").map(decodeURIComponent);
+  // เปิดลิงก์ที่มีส่วนท้ายของหน้าที่ไม่มีสิทธิ์ (เช่น #/users ที่ได้รับต่อจาก Admin) ให้กลับหน้าแรกแทนการขึ้น "ไม่มีสิทธิ์"
+  const allowed={users:canManageUsers(), admin:isSuper()||isAM(), review:canReviewAny()};
+  if(r in allowed && !allowed[r]){ const home=(role()==="branch"||isMgr())&&(S.me.branches||[]).length===1?"branch/"+S.me.branches[0]:""; history.replaceState(null,"","#/"+home); return render(); }
+  if(r==="branch"&&args[0]&&!S.branches[args[0]]){ history.replaceState(null,"","#/"); return render(); }
   renderNav(); const fn=routes[r]||viewDash; const app=$("#app");
   try{ await fn(app,...args); window.scrollTo(0,0); }catch(e){ console.error(e); app.innerHTML=`<div class="card red">เกิดข้อผิดพลาด: ${esc(e.message)}</div>`; }
 }
@@ -574,9 +585,10 @@ async function viewRegister(app, code){
     if(!P.structNo||!P.rows||!P.cols) return toast("กรอกลำดับโครงสร้าง จำนวนแถว และคอลัมน์");
     if(P.side!=="-"&&!P.sideName) return toast("ใส่ชื่อฝั่งหรือชื่อประตู เพื่อให้คนถ่ายภาพรอบถัดไปเลือกฝั่งถูก");
     P.id=pointIdOf(code,P.typeCode,P.structNo,P.side);
-    if(S.points[P.id]||(await db.doc("points/"+P.id).get()).exists) return toast("รหัสจุดนี้มีอยู่แล้ว ใช้ปุ่มถ่ายภาพตรวจของจุดเดิม หรือเปลี่ยนลำดับ/ฝั่ง");
-    let ov; try{ ov=await takePhoto(`${P.id} ภาพรวม`); }catch(e){ if(e.message!=="cancel") toast(e.message); return; }
+    if(S.points[P.id]) return toast("รหัสจุดนี้มีอยู่แล้ว ใช้ปุ่มถ่ายภาพตรวจของจุดเดิม หรือเปลี่ยนลำดับ/ฝั่ง");
+    let ov; try{ ov=await takePhoto(`${P.id} ภาพรวม`); }catch(e){ if(e.message!=="cancel") toast(e.message,5000); return; }
     if(!checkGPS(b,ov.gps)) return;
+    try{ if((await db.doc("points/"+P.id).get()).exists) return toast("รหัสจุดนี้มีอยู่แล้ว ใช้ปุ่มถ่ายภาพตรวจของจุดเดิม หรือเปลี่ยนลำดับ/ฝั่ง",5000); }catch(e){}
     const btn=$("#go"); busy(btn,true,"กำลังอัปโหลดภาพรวม…");
     try{ const j=await callScript(b.zoneId,{action:"upload",image:ov.full,branch:code,name:`${P.id}_overview_day`,month:monthKey()}); P.overview={fileId:j.fileId,url:j.url,thumb:ov.thumb}; }
     catch(e){ busy(btn,false); return toast(e.message,5000); }
@@ -649,10 +661,13 @@ async function viewInspect(app, pid){
   const dayOK=!st.enforceTime||(h>=st.dayStart&&h<st.dayEnd), nightOK=!st.enforceTime||(h>=st.nightStart&&h<st.nightEnd);
   app.innerHTML=`${crumb("#/branch/"+esc(p.branch),p.branch+" "+b.name)}<h1>ถ่ายภาพตรวจ</h1><div class="muted" style="margin-top:-8px;margin-bottom:12px">${esc(pid)}</div>
    <div class="card"><p>${esc(typeOf(p).name)} ${esc(p.structNo)} · ${esc(p.sideName||"")} ${p.road?"· "+esc(p.road):""}</p>
-   <div class="row"><button class="pri" data-sh="day" ${dayOK?"":"disabled"}>${IC.cam}รอบกลางวัน${li.day===mk?" (ถ่ายแล้ว ถ่ายซ้ำได้)":""}</button>
-   ${p.lit?`<button class="pri" data-sh="night" ${nightOK?"":"disabled"} style="background:var(--lotus-dd);border-color:var(--lotus-dd)">${IC.cam}รอบกลางคืน${li.night===mk?" (ถ่ายแล้ว ถ่ายซ้ำได้)":""}</button>`:""}</div>
+   ${!dayOK&&!(p.lit&&nightOK)?`<div class="card" style="background:var(--sun-l);border-color:#F0D78A;margin:6px 0 10px">ตอนนี้ ${String(Math.floor(h)).padStart(2,"0")}:${String(Math.round((h%1)*60)).padStart(2,"0")} น. อยู่นอกช่วงเวลาถ่ายภาพ</div>`:""}
+   <div class="row"><button class="pri" data-sh="day" data-ok="${dayOK?1:0}" ${dayOK?"":'style="opacity:.5"'}>${IC.cam}รอบกลางวัน${li.day===mk?" (ถ่ายแล้ว ถ่ายซ้ำได้)":""}</button>
+   ${p.lit?`<button class="pri" data-sh="night" data-ok="${nightOK?1:0}" style="background:var(--lotus-dd);border-color:var(--lotus-dd);${nightOK?"":"opacity:.5"}">${IC.cam}รอบกลางคืน${li.night===mk?" (ถ่ายแล้ว ถ่ายซ้ำได้)":""}</button>`:""}</div>
    <p class="muted">ถ่ายกลางวันได้ ${st.dayStart}:00–${st.dayEnd}:00 น.${p.lit?` · กลางคืน ${st.nightStart}:00–${st.nightEnd}:00 น. (หลังเปิดไฟป้ายแล้ว)`:""}</p></div>`;
-  $$("[data-sh]",app).forEach(x=>x.onclick=()=>runInspect(app,p,b,x.dataset.sh));
+  $$("[data-sh]",app).forEach(x=>x.onclick=()=>{
+    if(x.dataset.ok!=="1"){ const d=x.dataset.sh==="day"; toast(`รอบ${d?"กลางวัน":"กลางคืน"}ถ่ายได้ ${d?st.dayStart:st.nightStart}:00–${d?st.dayEnd:st.nightEnd}:00 น. เท่านั้น`,4500); return; }
+    runInspect(app,p,b,x.dataset.sh); });
 }
 async function runInspect(app,p,b,shift){
   const shTH=shift==="day"?"กลางวัน":"กลางคืน", mk=monthKey();
@@ -1070,7 +1085,7 @@ function viewLogin(msg){
   BOOTED=true; $("#hdr").hidden=true;
   const tiles=["ok","fill","ok","bad","empty","ok","ok","warn","ok"].map(c=>`<div class="tile c-${c}${c==="empty"?" empty":""}" style="min-width:46px;min-height:30px"></div>`).join("");
   $("#app").style.padding="0"; $("#app").style.maxWidth="none";
-  $("#app").innerHTML=`<div class="login-wrap"><div class="login-top"><div class="pylon" aria-hidden="true"><div class="pgrid" style="grid-template-columns:repeat(3,46px)">${tiles}</div></div><div class="legs" style="width:120px" aria-hidden="true"><i></i><i></i></div>
+  $("#app").innerHTML=`${IN_APP?'<div class="card" style="margin:0;border-radius:0;background:var(--sun-l);border-color:#F0D78A">เปิดผ่านแอปอื่นอยู่ กล้องอาจใช้ไม่ได้ กด ⋯ มุมขวาบน แล้วเลือก <b>เปิดใน Safari</b> หรือ <b>Chrome</b></div>':""}<div class="login-wrap"><div class="login-top"><div class="pylon" aria-hidden="true"><div class="pgrid" style="grid-template-columns:repeat(3,46px)">${tiles}</div></div><div class="legs" style="width:120px" aria-hidden="true"><i></i><i></i></div>
     <h1>${esc(C.appName||"ตรวจป้าย")}</h1><p>ติดตามสภาพป้ายร้านค้า Pylon อาคาร และป้ายไฟ</p>
     <div class="brands"><span class="fmt fmt-lotus">Lotus's</span><span class="fmt fmt-makro">Makro</span><span class="fmt fmt-talad">Talad Super</span></div></div>
     <div class="login-card">${msg?`<div class="card" style="text-align:left">${msg}</div>`:""}<button class="sun" id="gl" style="width:100%;min-height:52px;font-size:17px">เข้าสู่ระบบด้วย Gmail</button>
