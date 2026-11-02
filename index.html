@@ -139,6 +139,8 @@ h2{font-size:19px;font-weight:700;margin:26px 0 10px}
 .tile b{font-weight:800;font-size:11px;opacity:.7}
 .tile.empty{background:#fff;color:#556;box-shadow:0 0 0 1px #fff,0 0 14px 3px rgba(255,255,255,.5)}
 .tile.cur{outline:3px solid #FFD54A;outline-offset:2px}
+.tile.retake{outline:3px dashed #FF5A4E;outline-offset:-3px}
+.tile.retake b::after{content:" ⟳ ถ่ายใหม่";color:var(--bad)}
 .tile.skip{background:transparent;border:1px dashed #45524F}
 .legs{display:flex;justify-content:space-around;height:18px}.legs i{width:14px;background:var(--pylon)}
 .pt{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:start}
@@ -242,7 +244,7 @@ button.ghost{border-color:transparent;background:transparent;color:var(--lotus-d
 <script>
 "use strict";
 /* ================= ค่าคงที่ ================= */
-const VERSION = "1.4.0";
+const VERSION = "1.4.1";
 /* ===== ตรวจปัญหาการเริ่มระบบ: แสดงสาเหตุบนหน้าจอแทนการค้างที่ "กำลังโหลด" ===== */
 let BOOTED=false, BOOTMSG=false;
 function bootError(title, detail){
@@ -280,7 +282,7 @@ const COND_CLS = {"ปกติ":"ok","ซีดจาง":"warn","ไฟดั�
 const NO_TICKET = ["ปกติ","ป้ายทดแทน","ยังไม่ตรวจ"];
 const DEFAULT_SETTINGS = {
   sla:{"หลุด/ขาด":1,"ไฟดับทั้งป้าย":3,"ว่าง (ขาวโล่ง)":3,"ป้ายร้านเก่า (ร้านออกแล้ว)":7,"ไฟดับบางส่วน":7,"ป้ายไม่ตรงทะเบียน":7,"ซีดจาง":30},
-  dayStart:8, dayEnd:17, nightStart:19, nightEnd:24, enforceTime:true, aiThreshold:0.7, gpsRadiusM:1500
+  dayStart:8, dayEnd:17, nightStart:19, nightEnd:24, enforceTime:true, aiThreshold:0.7, gpsRadiusM:1500, alwaysReview:true
 };
 const ROLE_TH = {super:"Super Admin", viewer:"ผู้บริหาร", rm:"RM", am:"AM", manager:"ผู้จัดการศูนย์", branch:"พนักงานสาขา"};
 const ROLE_ORDER = ["super","viewer","rm","am","manager","branch"];
@@ -453,7 +455,7 @@ async function analyzeSlot(slot, shift, photo, opts={}){
     baseFileId:baseId||"", shift, signType:typeOf(slot).name, expectedTenant:opts.expectedTenant!=null?opts.expectedTenant:(slot.tenant||""), lit:!!slot.lit});
   return {fileId:j.fileId, url:j.url, ai:j.ai||{}, hadBaseline:!!baseId};
 }
-const aiOK = ai => ai && ai.category==="ปกติ" && Number(ai.confidence||0)>=S.settings.aiThreshold;
+const aiOK = ai => !S.settings.alwaysReview && ai && ai.category==="ปกติ" && Number(ai.confidence||0)>=S.settings.aiThreshold;
 
 /* ================= โหลดข้อมูล ================= */
 async function loadAll(){
@@ -534,7 +536,7 @@ async function viewDash(app){
   const okPct=slots.length?Math.round(slots.filter(s=>s.condition==="ปกติ").length/slots.length*100):0;
   const k=[["มีปัญหา",slots.filter(bad).length,"alert"],["ใบงานเกินกำหนด",overdue.length,"alert"],["ว่าง (ขาวโล่ง)",slots.filter(s=>s.condition==="ว่าง (ขาวโล่ง)").length,"alert"],
     ["ป้ายทดแทน",slots.filter(s=>s.condition==="ป้ายทดแทน"||s.contract==="ไม่มีสัญญา-ติดฟรี (ทดแทน)").length,""],
-    ["สัญญาไม่ทราบสถานะ",slots.filter(s=>s.contract==="ไม่ทราบสถานะ-รอตรวจสอบ").length,"info"],["ถ่ายภาพเดือนนี้",pct+"%",pct>=100?"good":""]];
+    ["รอสาขาถ่ายใหม่",slots.filter(s=>s.retake).length,"alert"],["สัญญาไม่ทราบสถานะ",slots.filter(s=>s.contract==="ไม่ทราบสถานะ-รอตรวจสอบ").length,"info"],["ถ่ายภาพเดือนนี้",pct+"%",pct>=100?"good":""]];
   const q=(S.q||"").toLowerCase();
   const brs=Object.values(S.branches).filter(inFilter).filter(b=>!q||(b.id+" "+b.name).toLowerCase().includes(q))
     .map(b=>{ const bs=slots.filter(s=>s.branch===b.id), bp=pts.filter(p=>p.branch===b.id), bt=tks.filter(t=>t.branch===b.id);
@@ -545,7 +547,7 @@ async function viewDash(app){
     return `<button class="bcard" data-b="${esc(r.b.id)}"><div class="top"><div class="grow"><div class="code">${esc(r.b.id)}${wide()?" · "+esc((S.zones[r.b.zoneId]||{}).name||""):""}</div><div class="name">${esc(r.b.name)}</div></div>${fmtBadge(r.b.format)}</div>
       ${healthBar(r.bs)}
       <div class="stats"><div><b>${r.bs.length}</b><span>ช่อง</span></div><div class="${r.nBad?"hot":""}"><b>${r.nBad}</b><span>มีปัญหา</span></div><div class="${r.nOver?"hot":""}"><b>${r.nOver}</b><span>เกินกำหนด</span></div><div class="${r.nEmpty?"hot":""}"><b>${r.nEmpty}</b><span>ว่าง</span></div></div>
-      <div class="row" style="margin-top:10px;font-size:13px;color:var(--ink2)"><span class="grow">ถ่ายภาพเดือนนี้ ${r.bp.length?p+"%":"-"}</span>${r.pend?`<span class="chip c-warn">รออนุมัติผัง ${r.pend}</span>`:""}</div>
+      <div class="row" style="margin-top:10px;font-size:13px;color:var(--ink2)"><span class="grow">ถ่ายภาพเดือนนี้ ${r.bp.length?p+"%":"-"}</span>${r.pend?`<span class="chip c-warn">รออนุมัติผัง ${r.pend}</span>`:""}${r.bs.some(s=>s.retake)?` <span class="chip c-bad">ถ่ายใหม่ ${r.bs.filter(s=>s.retake).length}</span>`:""}</div>
       <div class="prog"><i style="width:${p}%"></i></div></button>`; }).join("");
   const top=overdue.sort((a,b)=>ticketState(b).over-ticketState(a).over).slice(0,8);
   app.innerHTML=`${filterBar()}<div class="hero"><div class="t"><b>สภาพป้าย ${esc(scopeLabel())}</b><span>${new Date().toLocaleDateString("th-TH",{month:"long",year:"numeric"})}</span></div>
@@ -576,7 +578,7 @@ function pylonHTML(p, slots, curKey){
   for(let r=1;r<=rows;r++) for(let c=1;c<=cols;c++) if(!cover[`${r}-${c}`]) cells+=`<div class="tile skip" style="grid-row:${r};grid-column:${c}"></div>`;
   slots.forEach(s=>{ const key=`${s.row}-${s.col}`, cur=curKey===key?" cur":"", cls=COND_CLS[s.condition||"ยังไม่ตรวจ"]||"none", pos=`grid-row:${s.row} / span ${rs(s)};grid-column:${s.col} / span ${cs(s)}`;
     cells+=s.pending?`<div class="tile c-none${cur}" style="${pos};opacity:.55"><b>…</b><span>รอถ่าย</span></div>`
-      :`<button class="tile c-${cls}${cls==="empty"?" empty":""}${cur}" data-slot="${esc(s.id||"")}" style="${pos}" title="${esc(s.id||"")}"><b>${String(s.no).padStart(2,"0")}</b><span>${esc(s.tenant|| (cls==="empty"?"ว่าง":"—"))}</span></button>`; });
+      :`<button class="tile c-${cls}${cls==="empty"?" empty":""}${s.retake?" retake":""}${cur}" data-slot="${esc(s.id||"")}" style="${pos}" title="${esc(s.id||"")}"><b>${String(s.no).padStart(2,"0")}</b><span>${esc(s.tenant|| (cls==="empty"?"ว่าง":"—"))}</span></button>`; });
   return `<div style="display:inline-block;max-width:100%"><div class="pylon"><div class="head"><span>${esc(t.name)} ${esc(p.structNo)}${p.side&&p.side!=="-"?" · ฝั่ง "+esc(p.side):""}</span><span>${p.lit?"มีไฟ":""}</span></div>
     <div class="pgrid" style="grid-template-columns:repeat(${cols},minmax(74px,1fr))">${cells}</div></div>${t.legs?'<div class="legs"><i></i><i></i></div>':""}</div>`;
 }
@@ -594,11 +596,13 @@ async function viewBranch(app, code){
       <div class="muted">${[p.road,p.direction].filter(Boolean).map(esc).join(" · ")}</div>
       <div class="status-line">กลางวัน: ${li.day===mk?'<span class="chip c-ok">ถ่ายแล้วเดือนนี้</span>':'<span class="chip c-bad">ยังไม่ถ่ายเดือนนี้</span>'}
       ${p.lit?` กลางคืน: ${li.night===mk?'<span class="chip c-ok">ถ่ายแล้ว</span>':'<span class="chip c-bad">ยังไม่ถ่าย</span>'}`:""}</div>
+      ${(()=>{ const rt=ss.filter(s=>s.retake); return rt.length?`<div class="card" style="background:var(--bad-bg);border-color:#F3B4B6;margin:0 0 10px;padding:10px 12px"><b class="red">ต้องถ่ายใหม่ ${rt.length} ช่อง</b><div class="muted" style="color:var(--bad)">${rt.map(s=>`${String(s.no).padStart(2,"0")}: ${esc(s.retake.reason||"")}`).join("<br>")}</div>${canShoot?`<button class="dan" data-retake="${esc(p.id)}" style="margin-top:8px">${IC.cam}ถ่ายใหม่เฉพาะช่องนี้</button>`:""}</div>`:""; })()}
       <div class="row">${canShoot?`<button class="sun" data-insp="${esc(p.id)}">${IC.cam}ถ่ายภาพตรวจ</button>`:""}<button data-ov="${esc(p.id)}">ภาพรวมล่าสุด</button>
       ${canEdit&&p.status==="pending"?`<button data-appr="${esc(p.id)}">อนุมัติผัง</button>`:""}${canEdit?`<button data-ep="${esc(p.id)}">แก้ไขจุด</button>`:""}</div>
     </div></div></div>`; }).join("")}`;
   const r=$("#reg"); if(r) r.onclick=()=>go("register/"+code);
   $$("[data-insp]",app).forEach(x=>x.onclick=()=>go("inspect/"+x.dataset.insp));
+  $$("[data-retake]",app).forEach(x=>x.onclick=()=>go("inspect/"+x.dataset.retake+"/retake"));
   $$("[data-slot]",app).forEach(x=>x.onclick=()=>slotModal(x.dataset.slot));
   $$("[data-ov]",app).forEach(x=>x.onclick=()=>overviewModal(x.dataset.ov));
   $$("[data-ep]",app).forEach(x=>x.onclick=()=>pointModal(x.dataset.ep));
@@ -772,10 +776,18 @@ async function regSave(app,b,P,slots){
 }
 
 /* ================= ถ่ายภาพตรวจรายเดือน ================= */
-async function viewInspect(app, pid){
+async function viewInspect(app, pid, sub){
   const p=S.points[pid]; if(!p||!canShootBranch(p.branch)){ app.innerHTML=`<div class="card">ไม่มีสิทธิ์หรือไม่พบจุด</div>`; return; }
   const b=S.branches[p.branch], st=S.settings, h=bkkHour(), mk=monthKey(), li=p.lastInspection||{};
   const dayOK=!st.enforceTime||(h>=st.dayStart&&h<st.dayEnd), nightOK=!st.enforceTime||(h>=st.nightStart&&h<st.nightEnd);
+  if(sub==="retake"){
+    const rt=Object.values(S.slots).filter(s=>s.pointId===pid&&s.retake), sh=["day","night"].filter(x=>rt.some(s=>s.retake.shift===x));
+    if(!rt.length){ app.innerHTML=`${crumb("#/branch/"+esc(p.branch),p.branch+" "+b.name)}<div class="card empty-state">ไม่มีช่องที่ต้องถ่ายใหม่</div>`; return; }
+    app.innerHTML=`${crumb("#/branch/"+esc(p.branch),p.branch+" "+b.name)}<h1>ถ่ายใหม่</h1><div class="muted" style="margin-top:-8px;margin-bottom:12px">${esc(pid)} · ${rt.length} ช่อง ไม่ต้องถ่ายภาพรวม</div>
+     <div class="card"><div class="row">${sh.map(x=>{ const ok=x==="day"?dayOK:nightOK; return `<button class="sun" data-sh="${x}" data-ok="${ok?1:0}" ${ok?"":'style="opacity:.5"'}>${IC.cam}รอบ${x==="day"?"กลางวัน":"กลางคืน"} (${rt.filter(s=>s.retake.shift===x).length} ช่อง)</button>`; }).join("")}</div></div>`;
+    $$("[data-sh]",app).forEach(x=>x.onclick=()=>{ if(x.dataset.ok!=="1"){ const d=x.dataset.sh==="day"; return toast(`รอบ${d?"กลางวัน":"กลางคืน"}ถ่ายได้ ${d?st.dayStart:st.nightStart}:00–${d?st.dayEnd:st.nightEnd}:00 น. เท่านั้น`,4500); } runInspect(app,p,b,x.dataset.sh,true); });
+    return;
+  }
   app.innerHTML=`${crumb("#/branch/"+esc(p.branch),p.branch+" "+b.name)}<h1>ถ่ายภาพตรวจ</h1><div class="muted" style="margin-top:-8px;margin-bottom:12px">${esc(pid)}</div>
    <div class="card"><p>${esc(typeOf(p).name)} ${esc(p.structNo)} · ${esc(p.sideName||"")} ${p.road?"· "+esc(p.road):""}</p>
    ${!dayOK&&!(p.lit&&nightOK)?`<div class="card" style="background:var(--sun-l);border-color:#F0D78A;margin:6px 0 10px">ตอนนี้ ${String(Math.floor(h)).padStart(2,"0")}:${String(Math.round((h%1)*60)).padStart(2,"0")} น. อยู่นอกช่วงเวลาถ่ายภาพ</div>`:""}
@@ -786,14 +798,16 @@ async function viewInspect(app, pid){
     if(x.dataset.ok!=="1"){ const d=x.dataset.sh==="day"; toast(`รอบ${d?"กลางวัน":"กลางคืน"}ถ่ายได้ ${d?st.dayStart:st.nightStart}:00–${d?st.dayEnd:st.nightEnd}:00 น. เท่านั้น`,4500); return; }
     runInspect(app,p,b,x.dataset.sh); });
 }
-async function runInspect(app,p,b,shift){
+async function runInspect(app,p,b,shift,retakeOnly){
   const shTH=shift==="day"?"กลางวัน":"กลางคืน", mk=monthKey();
-  let ov; try{ ov=await takePhoto(`${p.id} ภาพรวม ${shTH}`,{mode:"overview"}); }catch(e){ if(e.message!=="cancel") toast(e.message); return; }
-  if(!checkGPS(b,ov.gps)) return;
-  app.innerHTML=`<div class="card">กำลังอัปโหลดภาพรวม…</div>`;
-  let ovr; try{ ovr=await callScript(p.zoneId,{action:"upload",image:ov.full,branch:p.branch,name:`${p.id}_overview_${shift}`,month:mk}); }catch(e){ toast(e.message,5000); return go("inspect/"+p.id); }
-  await db.doc("thumbs/"+p.id).set({zoneId:p.zoneId,branch:p.branch,[shift]:ov.thumb,[shift+"Url"]:ovr.url,[shift+"Month"]:mk},{merge:true});
-  const slots=Object.values(S.slots).filter(s=>s.pointId===p.id&&(shift==="day"||s.lit)).sort((a,b)=>a.row-b.row||a.col-b.col);
+  if(!retakeOnly){
+    let ov; try{ ov=await takePhoto(`${p.id} ภาพรวม ${shTH}`,{mode:"overview"}); }catch(e){ if(e.message!=="cancel") toast(e.message); return; }
+    if(!checkGPS(b,ov.gps)) return;
+    app.innerHTML=`<div class="card">กำลังอัปโหลดภาพรวม…</div>`;
+    let ovr; try{ ovr=await callScript(p.zoneId,{action:"upload",image:ov.full,branch:p.branch,name:`${p.id}_overview_${shift}`,month:mk}); }catch(e){ toast(e.message,5000); return go("inspect/"+p.id); }
+    await db.doc("thumbs/"+p.id).set({zoneId:p.zoneId,branch:p.branch,[shift]:ov.thumb,[shift+"Url"]:ovr.url,[shift+"Month"]:mk},{merge:true});
+  }
+  const slots=Object.values(S.slots).filter(s=>s.pointId===p.id&&(retakeOnly?(s.retake&&s.retake.shift===shift):(shift==="day"||s.lit))).sort((a,b)=>a.row-b.row||a.col-b.col);
   let i=0; const results=[];
   const step=()=>{
     if(i>=slots.length) return finish();
@@ -801,6 +815,7 @@ async function runInspect(app,p,b,shift){
     app.innerHTML=`<h1>${esc(p.id)} · ${shTH}</h1><div class="card"><div class="step">ช่อง ${i+1} จาก ${slots.length} · ${esc(s.id)}</div><div class="prog" style="margin:6px 0 4px"><i style="width:${Math.round(i/slots.length*100)}%"></i></div>
      <div style="margin:10px 0">${pylonHTML(p,Object.values(S.slots).filter(x=>x.pointId===p.id),`${s.row}-${s.col}`)}</div>
      <p>ร้านในทะเบียน: <b>${esc(s.tenant||"-")}</b> · สภาพล่าสุด ${chip(s.condition)}</p>
+     ${s.retake?`<p class="red">ถ่ายใหม่: ${esc(s.retake.reason||"")}</p>`:""}
      <div class="row"><button id="skip">ถ่ายไม่ได้</button><span class="grow"></span><button class="pri" id="shot">${IC.cam}ถ่ายภาพช่องนี้</button></div></div>`;
     $("#skip").onclick=async()=>{ const why=prompt("เหตุผลที่ถ่ายไม่ได้ เช่น มีรถบัง, ป้ายถูกรื้อ"); if(!why) return;
       results.push({s,skip:why}); await db.collection("inspections").add({slotId:s.id,pointId:p.id,branch:s.branch,zoneId:s.zoneId,shift,month:mk,status:"review",kind:"skip",note:why,ai:{},takenBy:S.me.email,takenAt:FV.serverTimestamp()}); i++; step(); };
@@ -812,22 +827,24 @@ async function runInspect(app,p,b,shift){
         if(r.ai&&r.ai.category==="ภาพใช้ไม่ได้"&&!(await confirmBox(`AI แจ้งว่าภาพใช้ไม่ได้: ${r.ai.note||""} ต้องการบันทึกภาพนี้ไว้หรือไม่ (กดยกเลิกเพื่อถ่ายใหม่)`))){ busy(e.target,false); return; }
         const firstBase=!r.hadBaseline, auto=aiOK(r.ai), now=FV.serverTimestamp();
         const su={lastFileId:r.fileId,lastUrl:r.url,lastInspectedAt:now,updatedAt:now}, tu={zoneId:s.zoneId,branch:s.branch,last:ph.thumb};
+        if(s.retake) su.retake=FV.delete();
         if(firstBase){ if(shift==="day"){su.baseFileIdDay=r.fileId; su.baseUrlDay=r.url; tu.baseDay=ph.thumb;} else {su.baseFileIdNight=r.fileId; su.baseUrlNight=r.url; tu.baseNight=ph.thumb;} }
         if(auto) su.condition="ปกติ";
         const b2=db.batch();
         b2.update(db.doc("slots/"+s.id),su); b2.set(db.doc("thumbs/"+s.id),tu,{merge:true});
         b2.set(db.collection("inspections").doc(),{slotId:s.id,pointId:p.id,branch:s.branch,zoneId:s.zoneId,shift,month:mk,fileId:r.fileId,url:r.url,thumb:ph.thumb,ai:r.ai||{},
           status:auto?"auto":"review",kind:firstBase?"baseline":"monthly",gps:ph.gps||null,takenBy:S.me.email,takenAt:now});
-        await b2.commit(); Object.assign(S.slots[s.id],su,{lastInspectedAt:new Date()});
+        await b2.commit(); Object.assign(S.slots[s.id],su,{lastInspectedAt:new Date()}); delete S.slots[s.id].retake;
         results.push({s,ai:r.ai,auto}); i++; step();
       }catch(err){ busy(e.target,false); toast(err.message,5000); }
     };
   };
   const finish=async()=>{
-    await db.doc("points/"+p.id).update({["lastInspection."+shift]:mk,updatedAt:FV.serverTimestamp()});
-    p.lastInspection={...(p.lastInspection||{}),[shift]:mk};
+    if(!retakeOnly) await db.doc("points/"+p.id).update({["lastInspection."+shift]:mk,updatedAt:FV.serverTimestamp()});
+    if(!retakeOnly) p.lastInspection={...(p.lastInspection||{}),[shift]:mk};
     const rev=results.filter(r=>!r.auto).length;
-    app.innerHTML=`<h1>ส่งภาพ ${esc(p.id)} แล้ว</h1><div class="card"><p>${results.length} ช่อง · ปกติ ${results.filter(r=>r.auto).length} · ส่งให้ AM ยืนยัน ${rev}</p>
+    app.innerHTML=`<h1>ส่งภาพ ${esc(p.id)} แล้ว</h1><div class="card"><p>${results.length} ช่อง · ${S.settings.alwaysReview?`ส่งให้ผู้จัดการศูนย์/AM ยืนยันทั้งหมด ${rev} ช่อง`:`ปกติ ${results.filter(r=>r.auto).length} · ส่งให้ยืนยัน ${rev}`}</p>
+     <p class="muted">ด้านล่างคือผลเบื้องต้นจาก AI ยังไม่ใช่ผลสุดท้าย</p>
      ${results.map(r=>`<div class="row" style="border-bottom:1px solid #edf1f0;padding:6px 0"><span class="grow">${esc(r.s.id)}</span>${r.skip?`<span class="chip c-none">ถ่ายไม่ได้</span>`:chip(COND.includes(r.ai.category)?r.ai.category:"ยังไม่ตรวจ")}<span class="muted">${r.ai&&r.ai.note?esc(r.ai.note):""}</span></div>`).join("")}
      <div class="row" style="justify-content:flex-end;margin-top:10px"><button class="pri" id="back">กลับหน้าสาขา</button></div></div>`;
     $("#back").onclick=async()=>{ await loadAll(); go("branch/"+p.branch); };
@@ -838,9 +855,12 @@ async function runInspect(app,p,b,shift){
 /* ================= AM ยืนยันผล AI ================= */
 async function viewReview(app){
   const list=Object.values(S.reviews).filter(inFilter).filter(canReview).sort((a,b)=>(a.branch+a.slotId).localeCompare(b.branch+b.slotId));
-  app.innerHTML=`<h1>รอยืนยันผล AI (${list.length})</h1>${filterBar()}
+  const okList=list.filter(r=>r.ai&&r.ai.category==="ปกติ"&&r.kind!=="skip");
+  app.innerHTML=`<div class="row"><h1 class="grow">รอยืนยันผล AI (${list.length})</h1>${okList.length?`<button id="bulk">${IC.check}ยืนยันที่ AI ว่าปกติ (${okList.length})</button>`:""}</div>${filterBar()}
   ${list.length?"":'<div class="card empty-state">ไม่มีรายการรอยืนยัน</div>'}<div id="rl"></div>`;
   bindFilters();
+  const bk=$("#bulk"); if(bk) bk.onclick=async()=>{ if(!await confirmBox(`ยืนยันผล "ปกติ" ${okList.length} รายการตามที่ AI ตรวจ? ควรดูภาพคร่าว ๆ ก่อนกด`)) return;
+    busy(bk,true,"กำลังยืนยัน…"); let n=0; for(const r of okList){ try{ await confirmReview(r,"ปกติ",false); delete S.reviews[r.id]; n++; }catch(e){} } toast(`ยืนยันแล้ว ${n} รายการ`); render(); };
   const rl=$("#rl");
   for(const r of list.slice(0,30)){
     const s=S.slots[r.slotId]||{}; const th=await db.doc("thumbs/"+r.slotId).get().then(d=>d.exists?d.data():{}).catch(()=>({}));
@@ -851,11 +871,30 @@ async function viewReview(app){
      <div class="thumbs">${base?`<figure><img src="${base}" alt="ภาพต้นแบบ"><figcaption>ต้นแบบ</figcaption></figure>`:""}${r.thumb?`<figure><img src="${r.thumb}" alt="ภาพที่ถ่าย"><figcaption>ภาพที่ถ่าย${r.url?` · <a href="${esc(r.url)}" target="_blank" rel="noopener">ภาพเต็ม</a>`:""}</figcaption></figure>`:""}</div>
      <div class="row" style="margin-top:8px"><select class="grow" data-f>${COND.filter(c=>c!=="ยังไม่ตรวจ").map(c=>`<option ${c===sug?"selected":""}>${esc(c)}</option>`).join("")}</select></div>
      ${r.thumb?'<label class="check"><input type="checkbox" data-base> ใช้ภาพนี้เป็นภาพต้นแบบใหม่ (เช่น เปลี่ยนป้ายใหม่แล้ว)</label>':""}
-     <div class="row" style="justify-content:flex-end"><button class="pri" data-ok>ยืนยัน</button></div>`;
+     <div class="row" style="justify-content:flex-end"><button class="dan" data-rej>ส่งกลับให้ถ่ายใหม่</button><button class="pri" data-ok>ยืนยัน</button></div>`;
     rl.appendChild(el);
+    $("[data-rej]",el).onclick=()=>rejectModal(r,()=>{ el.remove(); renderNav(); });
     $("[data-ok]",el).onclick=async e=>{ busy(e.target,true); try{ await confirmReview(r,$("[data-f]",el).value,!!($("[data-base]",el)||{}).checked); el.remove(); delete S.reviews[r.id]; renderNav(); toast("ยืนยันแล้ว"); }catch(err){ busy(e.target,false); toast(err.message,5000);} };
   }
   if(list.length>30) rl.insertAdjacentHTML("beforeend",`<p class="muted">แสดง 30 รายการแรก ยืนยันแล้วกดเมนูอีกครั้งเพื่อโหลดรายการถัดไป</p>`);
+}
+const REJECT_REASONS=["ภาพไม่ชัด / มืด / ย้อนแสง","ป้ายไม่อยู่ในภาพหรือเห็นไม่ครบ","ถ่ายผิดช่อง / ผิดฝั่ง","ติดป้ายข้างเคียงมากเกินไป","รอบกลางคืนแต่ไฟยังไม่เปิด"];
+function rejectModal(r, onDone){
+  const m=modal(`<h2 style="margin-top:0">ส่งกลับให้ถ่ายใหม่</h2><p class="muted">${esc(r.slotId)} · ${r.shift==="night"?"กลางคืน":"กลางวัน"} สาขาจะเห็นช่องนี้เป็น “ถ่ายใหม่” ในหน้าสาขา</p>
+    <div class="roles">${REJECT_REASONS.map((t,i)=>`<label class="ropt"><input type="radio" name="rr" value="${esc(t)}" ${i===0?"checked":""}><span><b>${esc(t)}</b></span></label>`).join("")}
+    <label class="ropt"><input type="radio" name="rr" value="_"><span><b>อื่น ๆ</b></span></label></div>
+    <input id="rro" placeholder="ระบุเหตุผลเพิ่มเติม (ไม่บังคับ)" style="margin-top:8px">
+    <div class="row" style="justify-content:flex-end;margin-top:12px"><button data-c>ยกเลิก</button><button class="dan" data-s>ส่งกลับ</button></div>`);
+  $("[data-c]",m.el).onclick=m.close;
+  $("[data-s]",m.el).onclick=async e=>{ let why=$("input[name=rr]:checked",m.el).value; const extra=$("#rro",m.el).value.trim();
+    if(why==="_"){ if(!extra) return toast("ระบุเหตุผล"); why=extra; } else if(extra) why+=" · "+extra;
+    busy(e.target,true); try{ await rejectReview(r,why); m.close(); toast("ส่งกลับให้สาขาถ่ายใหม่แล้ว"); onDone&&onDone(); }catch(err){ busy(e.target,false); toast(err.message,5000); } };
+}
+async function rejectReview(r, why){
+  const now=FV.serverTimestamp(), b=db.batch(), retake={shift:r.shift||"day",reason:why,by:S.me.email,at:TSx.now()};
+  b.update(db.doc("inspections/"+r.id),{status:"rejected",rejectReason:why,reviewedBy:S.me.email,reviewedAt:now});
+  if(S.slots[r.slotId]){ b.update(db.doc("slots/"+r.slotId),{retake,updatedAt:now}); S.slots[r.slotId].retake=retake; }
+  await b.commit(); delete S.reviews[r.id];
 }
 async function confirmReview(r, finalCond, setBase){
   const s=S.slots[r.slotId]; const now=FV.serverTimestamp(); const b=db.batch();
@@ -1079,6 +1118,7 @@ function superHTML(){
    <div><label>ความมั่นใจ AI ขั้นต่ำ (0–1)</label><input id="th" type="number" step="0.05" value="${st.aiThreshold}" style="width:100px"></div>
    <div><label>รัศมี GPS (ม.)</label><input id="gr" type="number" value="${st.gpsRadiusM}" style="width:110px"></div></div>
    <label class="check"><input type="checkbox" id="et" ${st.enforceTime?"checked":""}> บังคับช่วงเวลาถ่ายภาพ</label>
+   <label class="check"><input type="checkbox" id="ar" ${st.alwaysReview?"checked":""}> ต้องให้คนยืนยันผล AI ทุกภาพ (ไม่บันทึกอัตโนมัติแม้ AI ว่าปกติ)</label>
    <div class="row" style="justify-content:flex-end"><button class="pri" id="ssave">บันทึกกติกา</button></div></div>`;
 }
 async function syncRMUsers(rmIds){
@@ -1106,7 +1146,7 @@ function bindSuper(app){
     const d={name,amName:$("#zam").value.trim(),rmId:$("#zrm").value,lineGroupId:"",createdAt:FV.serverTimestamp()};
     await db.doc("zones/"+id).set(d); S.zones[id]={id,...d}; await syncRMUsers([d.rmId]); S.f.zone=id; toast("เพิ่มเขตแล้ว"); render(); };
   $("#ssave").onclick=async()=>{ const sla={}; $$("[data-sla]",app).forEach(i=>sla[i.dataset.sla]=Number(i.value)||1);
-    const d={sla,dayStart:+$("#ds").value,dayEnd:+$("#de").value,nightStart:+$("#ns").value,nightEnd:+$("#ne").value,aiThreshold:+$("#th").value,gpsRadiusM:+$("#gr").value,enforceTime:$("#et").checked};
+    const d={sla,dayStart:+$("#ds").value,dayEnd:+$("#de").value,nightStart:+$("#ns").value,nightEnd:+$("#ne").value,aiThreshold:+$("#th").value,gpsRadiusM:+$("#gr").value,enforceTime:$("#et").checked,alwaysReview:$("#ar").checked};
     await db.doc("settings/main").set(d,{merge:true}); Object.assign(S.settings,d); toast("บันทึกกติกาแล้ว"); };
 }
 
