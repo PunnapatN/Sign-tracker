@@ -245,7 +245,7 @@ button.ghost{border-color:transparent;background:transparent;color:var(--lotus-d
 <script>
 "use strict";
 /* ================= ค่าคงที่ ================= */
-const VERSION = "1.5.0";
+const VERSION = "1.6.0";
 /* ===== ตรวจปัญหาการเริ่มระบบ: แสดงสาเหตุบนหน้าจอแทนการค้างที่ "กำลังโหลด" ===== */
 let BOOTED=false, BOOTMSG=false;
 function bootError(title, detail){
@@ -268,12 +268,13 @@ firebase.initializeApp(C.firebase);
 const auth = firebase.auth(), db = firebase.firestore();
 const FV = firebase.firestore.FieldValue, TSx = firebase.firestore.Timestamp;
 const TYPES = [
-  {code:"PY", n:1, name:"Pylon", sided:true, legs:true},
-  {code:"TT", n:2, name:"Totem", sided:true, legs:true},
-  {code:"BT", n:3, name:"Building (Tenant)", sided:true},
-  {code:"BN", n:4, name:"Building (Banner)", sided:true, banner:true},
-  {code:"EN", n:5, name:"Tenant Logo ทางเข้า", sided:true},
-  {code:"PL", n:6, name:"ป้ายไฟวงกลมเสาไฟ", sided:false}
+  // side/road/dir = ต้องกรอกช่องนั้นหรือไม่ · ov: "always" ถ่ายแค่ภาพรวมเสมอ, "optional" เลือกได้, ไม่ใส่ = ถ่ายรายป้าย · views = ภาพรวมที่ต้องถ่ายในงานเดียว
+  {code:"PY", n:1, name:"Pylon", sided:true, legs:true, side:true, road:true, dir:true},
+  {code:"TT", n:2, name:"Totem", sided:true, legs:true, side:true, road:true, dir:true, ov:"optional", views:["ภาพรวม"]},
+  {code:"BT", n:3, name:"Building (Tenant)", sided:false, side:false, road:false, dir:false},
+  {code:"BN", n:4, name:"Building (Banner)", sided:true, banner:true, side:true, road:true, dir:true, ov:"always", views:["ภาพรวม"]},
+  {code:"EN", n:5, name:"Tenant Logo ทางเข้า", sided:false, side:false, road:false, dir:false},
+  {code:"PL", n:6, name:"ป้ายไฟวงกลมเสาไฟ", sided:false, side:false, road:true, dir:false, ov:"always", views:["ด้านหน้า","ด้านหลัง"]}
 ];
 const TYPE = Object.fromEntries(TYPES.map(t=>[t.code,t]));
 const SIDES = ["A","B","C","D","D1","D2","D3","D4","D5","D6","-"];
@@ -321,8 +322,9 @@ const myZones = () => wide() ? Object.keys(S.zones) : isRM() ? (S.me.zones||[]) 
 const canEditZone = z => isSuper() || (isAM() && S.me.zoneId===z);
 const myBranch = b => { const br=S.branches[b]; return !!br && (isMgr()||role()==="branch") && S.me.zoneId===br.zoneId && (S.me.branches||[]).includes(b); };
 const canShootBranch = b => { const br=S.branches[b]; if(!br) return false; return canEditZone(br.zoneId) || myBranch(b); };
-const canReview = o => canEditZone(o.zoneId) || (isMgr() && myBranch(o.branch));
-const canReviewAny = () => isSuper() || isAM() || isMgr();
+const canReview = o => canEditZone(o.zoneId);  // อนุมัติ (ตรวจภาพ อนุมัติผัง อนุมัติปิดงาน) เฉพาะ AM
+const canDetail = s => canEditZone(s.zoneId) || (isMgr() && myBranch(s.branch));  // กรอกรายละเอียดสัญญา Unit รายได้
+const canReviewAny = () => isSuper() || isAM();
 const canManageUsers = () => isSuper() || isAM();
 
 /* ================= ตัวช่วย ================= */
@@ -587,8 +589,8 @@ function pylonHTML(p, slots, curKey){
   let cells="";
   for(let r=1;r<=rows;r++) for(let c=1;c<=cols;c++) if(!cover[`${r}-${c}`]) cells+=`<div class="tile skip" style="grid-row:${r};grid-column:${c}"></div>`;
   slots.forEach(s=>{ const key=`${s.row}-${s.col}`, cur=curKey===key?" cur":"", cls=COND_CLS[s.condition||"ยังไม่ตรวจ"]||"none", pos=`grid-row:${s.row} / span ${rs(s)};grid-column:${s.col} / span ${cs(s)}`;
-    cells+=s.pending?`<div class="tile c-none${cur}" style="${pos};opacity:.55"><b>…</b><span>รอถ่าย</span></div>`
-      :`<button class="tile c-${cls}${cls==="empty"?" empty":""}${s.retake?" retake":""}${cur}" data-slot="${esc(s.id||"")}" style="${pos}" title="${esc(s.id||"")}"><b>${String(s.no).padStart(2,"0")}</b><span>${esc(s.tenant|| (cls==="empty"?"ว่าง":"—"))}</span></button>`; });
+    cells+=s.pending?`<div class="tile c-none${cur}" style="${pos};opacity:.55"><b>…</b><span>${esc(s.view||"รอถ่าย")}</span></div>`
+      :`<button class="tile c-${cls}${cls==="empty"?" empty":""}${s.retake?" retake":""}${cur}" data-slot="${esc(s.id||"")}" style="${pos}" title="${esc(s.id||"")}"><b>${String(s.no).padStart(2,"0")}</b><span>${esc(s.view||s.tenant|| (cls==="empty"?"ว่าง":"—"))}</span></button>`; });
   return `<div style="display:inline-block;max-width:100%"><div class="pylon"><div class="head"><span>${esc(t.name)} ${esc(p.structNo)}${p.side&&p.side!=="-"?" · ฝั่ง "+esc(p.side):""}</span><span>${p.lit?"มีไฟ":""}</span></div>
     <div class="pgrid" style="grid-template-columns:repeat(${cols},minmax(74px,1fr))">${cells}</div></div>${t.legs?'<div class="legs"><i></i><i></i></div>':""}</div>`;
 }
@@ -613,7 +615,8 @@ async function viewBranch(app, code){
       ${lit.length?` กลางคืน: <span class="chip ${nd>=lit.length?"c-ok":"c-bad"}">${nd}/${lit.length}</span>`:""}</div>
       ${rt.length?`<div class="card" style="background:var(--bad-bg);border-color:#F3B4B6;margin:0 0 10px;padding:10px 12px"><b class="red">ต้องถ่ายใหม่ ${rt.length} ช่อง</b><div class="muted" style="color:var(--bad)">${rt.map(s=>`${String(s.no).padStart(2,"0")}: ${esc(s.retake.reason||"")}`).join("<br>")}</div>${canShoot?`<button class="dan" data-retake="${esc(p.id)}" style="margin-top:8px">${IC.cam}ถ่ายใหม่เฉพาะช่องนี้</button>`:""}</div>`:""}
       <div class="row">${canShoot?`<button class="sun" data-insp="${esc(p.id)}">${IC.cam}${dd>0&&dd<ss.length?`ทำต่อ (เหลือ ${ss.length-dd})`:"ถ่ายภาพรอบเดือน"}</button>`:""}<button data-ov="${esc(p.id)}">ภาพรวมล่าสุด</button>
-      ${canEdit&&p.status==="pending"?`<button data-appr="${esc(p.id)}">อนุมัติผัง</button>`:""}${canEdit?`<button data-ep="${esc(p.id)}">แก้ไขจุด</button>`:""}</div>`}
+      ${canEdit&&p.status==="pending"?`<button data-appr="${esc(p.id)}">อนุมัติผัง</button>`:""}${canEdit?`<button data-ep="${esc(p.id)}">แก้ไขจุด</button><button class="dan" data-dp="${esc(p.id)}">ลบออกจากทะเบียน</button>`:""}</div>`}
+      ${draft&&canEdit?`<div class="row" style="margin-top:8px"><button class="dan" data-dp="${esc(p.id)}">ลบร่างนี้</button></div>`:""}
       <p class="muted" style="margin:8px 0 0">แตะที่ป้ายบนผังเพื่อดูหรือแก้ไขป้ายนั้น</p>
     </div></div></div>`; }).join("")}`;
   const r=$("#reg"); if(r) r.onclick=()=>go("register/"+code);
@@ -623,6 +626,7 @@ async function viewBranch(app, code){
   $$("[data-slot]",app).forEach(x=>x.onclick=()=>slotModal(x.dataset.slot));
   $$("[data-ov]",app).forEach(x=>x.onclick=()=>overviewModal(x.dataset.ov));
   $$("[data-ep]",app).forEach(x=>x.onclick=()=>pointModal(x.dataset.ep));
+  $$("[data-dp]",app).forEach(x=>x.onclick=()=>deletePoint(x.dataset.dp));
   $$("[data-appr]",app).forEach(x=>x.onclick=async()=>{ await db.doc("points/"+x.dataset.appr).update({status:"approved",approvedBy:S.me.email,updatedAt:FV.serverTimestamp()}); S.points[x.dataset.appr].status="approved"; toast("อนุมัติผังแล้ว"); render(); });
 }
 async function overviewModal(pid){
@@ -631,9 +635,9 @@ async function overviewModal(pid){
   $("[data-c]",m.el).onclick=m.close;
 }
 async function slotModal(id){
-  const s=S.slots[id]; const am=canEditZone(s.zoneId), staff=canShootBranch(s.branch);
+  const s=S.slots[id]; const am=canEditZone(s.zoneId), staff=canShootBranch(s.branch), det=canDetail(s);
   const th=await db.doc("thumbs/"+id).get().then(d=>d.exists?d.data():{}).catch(()=>({}));
-  const can=k=>am||(staff&&["tenant","w","h","lit"].includes(k));
+  const can=k=>am||(staff&&["tenant","w","h","lit"].includes(k))||(det&&["contract","unit","rent","start","end","install","contentExpiry"].includes(k));
   const f=(k,l,type="text")=>`<label>${l}</label><input data-k="${k}" type="${type}" value="${esc(s[k]==null?"":s[k])}" ${can(k)?"":"disabled"}>`;
   const sel=(k,l,opts)=>`<label>${l}</label><select data-k="${k}" ${can(k)?"":"disabled"}>${opts.map(o=>`<option ${s[k]===o?"selected":""}>${esc(o)}</option>`).join("")}</select>`;
   const img=(k,cap,u)=>th[k]?`<figure><img src="${th[k]}" alt="${cap}"><figcaption>${cap}${s[u]?` · <a href="${esc(s[u])}" target="_blank" rel="noopener">ภาพเต็ม</a>`:""}</figcaption></figure>`:"";
@@ -645,18 +649,18 @@ async function slotModal(id){
    ${f("tenant","ชื่อร้าน/แบรนด์")}
    <div class="row"><div class="grow">${f("w","กว้าง (ซม.)","number")}</div><div class="grow">${f("h","สูง (ซม.)","number")}</div></div>
    <label class="check"><input type="checkbox" data-k="lit" ${s.lit?"checked":""} ${can("lit")?"":"disabled"}> ป้ายมีไฟ ${LIT_NOTE}</label>
-   ${am?`${sel("contract","สถานะสัญญา",CONTRACT)}${f("unit","Unit ใน Simplicity")}${f("rent","ค่าเช่า/เดือน (บาท)","number")}
+   ${det&&!s.view?`${sel("contract","สถานะสัญญา",CONTRACT)}${f("unit","Unit ใน Simplicity")}${f("rent","ค่าเช่า/เดือน (บาท)","number")}
    <div class="row"><div class="grow">${f("start","วันเริ่มสัญญา","date")}</div><div class="grow">${f("end","วันสิ้นสุดสัญญา","date")}</div></div>
-   <div class="row"><div class="grow">${f("install","วันติดตั้งป้าย","date")}</div><div class="grow">${f("contentExpiry","วันหมดอายุเนื้อหา (Banner)","date")}</div></div>
-   ${sel("condition","สภาพป้าย (แก้ด้วยตนเอง)",COND)}
-   <label>จัดการผัง</label><div class="row">${nR?`<button data-mg="r">รวมกับป้าย ${String(nR.no).padStart(2,"0")} ด้านขวา</button>`:""}${nD?`<button data-mg="d">รวมกับป้าย ${String(nD.no).padStart(2,"0")} ด้านล่าง</button>`:""}<button class="dan" data-del>ลบป้ายนี้ (ไม่ใช่ป้าย/โครงสร้าง)</button></div>`:`<p class="muted">ข้อมูลสัญญา Unit และค่าเช่า แก้ได้โดย AM</p>`}
-   <div class="row" style="justify-content:flex-end;margin-top:12px"><button data-c>ปิด</button>${(am||staff)?'<button class="pri" data-s>บันทึก</button>':""}</div>`);
+   <div class="row"><div class="grow">${f("install","วันติดตั้งป้าย","date")}</div><div class="grow">${f("contentExpiry","วันหมดอายุเนื้อหา (Banner)","date")}</div></div>`:""}
+   ${am?`${sel("condition","สภาพป้าย (แก้ด้วยตนเอง)",COND)}
+   <label>จัดการผัง</label><div class="row">${nR?`<button data-mg="r">รวมกับป้าย ${String(nR.no).padStart(2,"0")} ด้านขวา</button>`:""}${nD?`<button data-mg="d">รวมกับป้าย ${String(nD.no).padStart(2,"0")} ด้านล่าง</button>`:""}<button class="dan" data-del>ลบป้ายนี้ (ไม่ใช่ป้าย/โครงสร้าง)</button></div>`:det?`<p class="muted">การอนุมัติ ตรวจภาพ และจัดการผัง ทำได้โดย AM</p>`:`<p class="muted">ข้อมูลสัญญา Unit และค่าเช่า แก้ได้โดยผู้จัดการศูนย์และ AM</p>`}
+   <div class="row" style="justify-content:flex-end;margin-top:12px"><button data-c>ปิด</button>${(am||staff||det)?'<button class="pri" data-s>บันทึก</button>':""}</div>`);
   $("[data-c]",m.el).onclick=m.close;
   const sv=$("[data-s]",m.el); if(sv) sv.onclick=async e=>{
     const u={}; $$("[data-k]",m.el).forEach(i=>{ if(i.disabled) return; const k=i.dataset.k; u[k]= i.type==="checkbox"?i.checked : (i.type==="number"? (i.value===""?null:Number(i.value)) : i.value); });
     busy(e.target,true);
     try{ const b=db.batch(); b.update(db.doc("slots/"+id),{...u,updatedAt:FV.serverTimestamp()});
-      if(am&&u.contract===NO_CONTRACT&&s.contract!==NO_CONTRACT&&!Object.values(S.tickets).some(t=>t.slotId===id&&t.category==="ไม่มีสัญญา")){
+      if(det&&u.contract===NO_CONTRACT&&s.contract!==NO_CONTRACT&&!Object.values(S.tickets).some(t=>t.slotId===id&&t.category==="ไม่มีสัญญา")){
         const sla=S.settings.sla["ไม่มีสัญญา"]||30, ref=db.collection("tickets").doc();
         const t={slotId:id,pointId:s.pointId,branch:s.branch,zoneId:s.zoneId,category:"ไม่มีสัญญา",shift:"day",tenant:u.tenant||s.tenant||"",slaDays:sla,status:"open",
           createdAt:TSx.now(),dueAt:TSx.fromDate(addDays(new Date(),sla)),lastProgressAt:TSx.now(),progress:[],createdBy:S.me.email};
@@ -664,7 +668,7 @@ async function slotModal(id){
       await b.commit(); Object.assign(S.slots[id],u); m.close(); toast("บันทึกแล้ว"); render(); }catch(err){ toast(err.message,5000); busy(e.target,false); }
   };
   const bb=$("[data-base]",m.el); if(bb) bb.onclick=async e=>{
-    let ph; try{ ph=await takePhoto(`${id} ต้นแบบใหม่`,{mode:"slot",aspect:(s.w&&s.h)?s.w/s.h:null}); }catch(err){ if(err.message!=="cancel") toast(err.message); return; }
+    let ph; try{ ph=await takePhoto(`${id} ต้นแบบใหม่`,{mode:s.view?"overview":"slot",aspect:(s.w&&s.h)?s.w/s.h:null}); }catch(err){ if(err.message!=="cancel") toast(err.message); return; }
     busy(e.target,true,"กำลังอัปโหลด…");
     try{ const r=await uploadSlot(s,"day",ph,"baseline"), now=FV.serverTimestamp(), b=db.batch();
       b.update(db.doc("slots/"+id),{baseFileIdDay:r.fileId,baseUrlDay:r.url,lastFileId:r.fileId,lastUrl:r.url,lastInspectedAt:now,updatedAt:now});
@@ -676,6 +680,13 @@ async function slotModal(id){
     const b=db.batch(); b.update(db.doc("slots/"+id),{...u,updatedAt:FV.serverTimestamp()}); b.delete(db.doc("slots/"+o.id)); b.delete(db.doc("thumbs/"+o.id)); await b.commit();
     Object.assign(s,u); delete S.slots[o.id]; m.close(); toast("รวมป้ายแล้ว"); render(); });
   const dl=$("[data-del]",m.el); if(dl) dl.onclick=async()=>{ if(!await confirmBox(`ลบป้าย ${id}? ช่องนี้จะไม่ต้องถ่ายภาพอีก (ภาพเดิมใน Drive ยังอยู่)`)) return; await db.doc("slots/"+id).delete(); await db.doc("thumbs/"+id).delete().catch(()=>{}); delete S.slots[id]; m.close(); toast("ลบแล้ว"); render(); };
+}
+async function deletePoint(pid){
+  const ss=Object.values(S.slots).filter(s=>s.pointId===pid);
+  if(!await confirmBox(`ลบจุด ${pid} และป้าย ${ss.length} ป้ายออกจากทะเบียน? ไม่ต้องถ่ายภาพจุดนี้อีก (ภาพเดิมใน Drive ยังอยู่)`)) return;
+  const ops=[[db.doc("points/"+pid),null],[db.doc("thumbs/"+pid),null]]; ss.forEach(s=>{ ops.push([db.doc("slots/"+s.id),null]); ops.push([db.doc("thumbs/"+s.id),null]); });
+  for(let i=0;i<ops.length;i+=400){ const b=db.batch(); ops.slice(i,i+400).forEach(([r])=>b.delete(r)); await b.commit(); }
+  delete S.points[pid]; ss.forEach(s=>delete S.slots[s.id]); toast("ลบออกจากทะเบียนแล้ว"); render();
 }
 function pointModal(pid){
   const p=S.points[pid];
@@ -700,17 +711,19 @@ async function viewRegister(app, code, resume){
   app.innerHTML=`${crumb("#/branch/"+esc(code),code+" "+b.name)}<h1>ลงทะเบียนผังป้าย</h1>
   <div class="card"><div class="step">ขั้นที่ 1 จาก 3 · ข้อมูลจุดป้าย</div><div class="stepbar"><i class="on"></i><i></i><i></i></div>
    <label>ประเภทป้าย</label><select id="ty">${TYPES.map(t=>`<option value="${t.code}">${t.n} ${esc(t.name)}</option>`).join("")}</select>
-   <div class="row"><div class="grow"><label>ลำดับโครงสร้าง (ต้นที่/ชุดที่/เสาที่)</label><input id="sn" type="number" min="1" value="1"></div>
-   <div class="grow"><label>รหัสฝั่ง/ประตู</label><select id="sd">${SIDES.map(s=>`<option>${s}</option>`).join("")}</select></div></div>
-   <p class="muted">A = ฝั่งหันเข้าถนนหลัก/การจราจรหลัก, B = อีกฝั่ง, D1–D6 = ประตู, - = ไม่มีฝั่ง</p>
-   <label>ชื่อฝั่ง/ชื่อประตู</label><input id="sname" placeholder="ขาเข้าอำเภอเมือง">
-   <div class="row"><div class="grow"><label>ถนน</label><input id="road" placeholder="ถนนกาญจนาภิเษก"></div>
-   <div class="grow"><label>ทิศทางจราจร</label><select id="dir"><option value="">-</option><option>ขาเข้า</option><option>ขาออก</option></select></div></div>
-   <div class="row"><div class="grow"><label>จำนวนแถว (บน→ล่าง)</label><input id="rows" type="number" min="1" max="20" value="4"></div>
+   <div class="row"><div class="grow"><label id="snl">ลำดับโครงสร้าง (ต้นที่/ชุดที่/เสาที่)</label><input id="sn" type="number" min="1" value="1"></div>
+   <div class="grow" id="wsd"><label>รหัสฝั่ง/ประตู</label><select id="sd">${SIDES.map(s=>`<option>${s}</option>`).join("")}</select></div></div>
+   <p class="muted" id="sdhint">A = ฝั่งหันเข้าถนนหลัก/การจราจรหลัก, B = อีกฝั่ง, D1–D6 = ประตู, - = ไม่มีฝั่ง</p>
+   <label id="snamel">ชื่อฝั่ง/ชื่อประตู</label><input id="sname" placeholder="ขาเข้าอำเภอเมือง">
+   <div class="row"><div class="grow" id="wroad"><label>ถนน</label><input id="road" placeholder="ถนนกาญจนาภิเษก"></div>
+   <div class="grow" id="wdir"><label>ทิศทางจราจร</label><select id="dir"><option value="">-</option><option>ขาเข้า</option><option>ขาออก</option></select></div></div>
+   <label class="check" id="wov"><input type="checkbox" id="ovonly"> ถ่ายแค่ภาพรวม ไม่ต้องถ่ายแยกรายป้าย (เช่น ไม่มีป้ายร้านค้า)</label>
+   <div class="card" id="ovinfo" style="background:var(--sun-l);border-color:#F0D78A;padding:10px 12px" hidden></div>
+   <div id="wlay"><div class="row"><div class="grow"><label>จำนวนแถว (บน→ล่าง)</label><input id="rows" type="number" min="1" max="20" value="4"></div>
    <div class="grow"><label>จำนวนคอลัมน์ (ซ้าย→ขวา)</label><input id="cols" type="number" min="1" max="12" value="3"></div></div>
    <label>ผังช่องป้าย (แตะเลือกช่องที่ติดกัน แล้วกดรวม)</label><div id="lay" class="lay"></div>
    <div class="row"><button id="lmerge">รวมช่องที่เลือก</button><button id="lnone">ไม่มีป้ายตรงนี้</button><button id="lreset" class="ghost">เริ่มผังใหม่</button></div>
-   <p class="muted" id="laymsg">เช่น ป้าย 4 แถว 2 คอลัมน์ แต่แถวบนเป็นป้ายเดียว ให้แตะ 2 ช่องบนสุด แล้วกด “รวมช่องที่เลือก”</p>
+   <p class="muted" id="laymsg">เช่น ป้าย 4 แถว 2 คอลัมน์ แต่แถวบนเป็นป้ายเดียว ให้แตะ 2 ช่องบนสุด แล้วกด “รวมช่องที่เลือก”</p></div>
    <label class="check"><input type="checkbox" id="lit"> จุดนี้มีป้ายไฟ ${LIT_NOTE}</label>
    <p id="pidPrev" class="muted"></p>
    <div class="row" style="justify-content:flex-end"><button class="pri" id="go">${IC.cam}ถ่ายภาพรวมของจุดนี้</button></div></div>`;
@@ -740,15 +753,35 @@ async function viewRegister(app, code, resume){
     [...L.sel].forEach(k=>{ const [r,c]=k.split("-").map(Number), g=regAt(r,c); if(g){ L.regions=L.regions.filter(x=>x!==g); for(let i=0;i<g.rowSpan;i++) for(let j=0;j<g.colSpan;j++) L.none.add(`${g.row+i}-${g.col+j}`); } else if(L.none.has(k)){ L.none.delete(k); L.regions.push({row:r,col:c,rowSpan:1,colSpan:1}); } });
     L.sel.clear(); drawLay(); };
   $("#lreset").onclick=resetLay; $$("#rows,#cols",app).forEach(e=>e.oninput=resetLay); resetLay();
-  $$("#ty,#sn,#sd",app).forEach(e=>e.oninput=prev); $("#ty").onchange=()=>{ if(!TYPE[$("#ty").value].sided) $("#sd").value="-"; prev(); }; prev();
+  const ovOn=()=>{ const t=TYPE[$("#ty").value]; return t.ov==="always"||(t.ov==="optional"&&$("#ovonly").checked); };
+  const applyType=()=>{ const t=TYPE[$("#ty").value];
+    $("#wsd").hidden=!t.side; $("#sdhint").hidden=!t.side; if(!t.side) $("#sd").value="-";
+    $("#wroad").hidden=!t.road; if(!t.road) $("#road").value=""; $("#wdir").hidden=!t.dir; if(!t.dir) $("#dir").value="";
+    $("#wov").hidden=t.ov!=="optional"; if(t.ov!=="optional") $("#ovonly").checked=false;
+    $("#snamel").textContent=t.side?"ชื่อฝั่ง/ชื่อประตู":t.code==="PL"?"ตำแหน่งเสา (เช่น ทางเข้าลานจอด)":"ชื่อตำแหน่ง (เช่น ด้านหน้าอาคาร)";
+    $("#snl").textContent=t.code==="PL"?"เสาที่":"ลำดับโครงสร้าง (ต้นที่/ชุดที่)";
+    const ov=ovOn(); $("#wlay").hidden=ov; $("#ovinfo").hidden=!ov;
+    if(ov) $("#ovinfo").innerHTML=`จุดนี้ถ่ายแค่ภาพรวม ${t.views.length>1?`<b>${t.views.join(" + ")}</b> ในงานเดียว`:""} ไม่ต้องแบ่งช่องป้าย`;
+    $("#go").innerHTML=`${IC.cam}${ov?"เริ่มถ่ายภาพรวม":"ถ่ายภาพรวมของจุดนี้"}`; prev(); };
+  $$("#ty,#sn,#sd",app).forEach(e=>e.oninput=prev); $("#ty").onchange=applyType; $("#ovonly").onchange=applyType; applyType();
   $("#go").onclick=async()=>{
     const P={branch:code, zoneId:b.zoneId, typeCode:$("#ty").value, structNo:Number($("#sn").value), side:$("#sd").value, sideName:$("#sname").value.trim(), road:$("#road").value.trim(), direction:$("#dir").value, rows:Number($("#rows").value), cols:Number($("#cols").value), lit:$("#lit").checked};
-    if(!P.structNo||!P.rows||!P.cols) return toast("กรอกลำดับโครงสร้าง จำนวนแถว และคอลัมน์");
-    if(!L.regions.length) return toast("ผังนี้ไม่มีช่องป้าย");
-    P.regions=L.regions.map(g=>({...g})).sort((a,b)=>a.row-b.row||a.col-b.col);
+    const T=TYPE[P.typeCode]; P.overviewOnly=ovOn();
+    if(!T.side) P.side="-"; if(!T.road) P.road=""; if(!T.dir) P.direction="";
+    if(!P.structNo) return toast("กรอกลำดับ");
+    if(P.overviewOnly){ P.rows=1; P.cols=T.views.length; P.regions=T.views.map((v,i)=>({row:1,col:i+1,rowSpan:1,colSpan:1,view:v})); }
+    else { if(!P.rows||!P.cols) return toast("กรอกจำนวนแถวและคอลัมน์"); if(!L.regions.length) return toast("ผังนี้ไม่มีช่องป้าย");
+      P.regions=L.regions.map(g=>({...g})).sort((a,b)=>a.row-b.row||a.col-b.col); }
     if(P.side!=="-"&&!P.sideName) return toast("ใส่ชื่อฝั่งหรือชื่อประตู เพื่อให้คนถ่ายภาพรอบถัดไปเลือกฝั่งถูก");
     P.id=pointIdOf(code,P.typeCode,P.structNo,P.side);
     if(S.points[P.id]) return toast("รหัสจุดนี้มีอยู่แล้ว ใช้ปุ่มถ่ายภาพตรวจของจุดเดิม หรือเปลี่ยนลำดับ/ฝั่ง");
+    if(P.overviewOnly){ const btn=$("#go"); busy(btn,true,"กำลังบันทึก…");
+      try{ if((await db.doc("points/"+P.id).get()).exists){ busy(btn,false); return toast("รหัสจุดนี้มีอยู่แล้ว",5000); }
+        const now=FV.serverTimestamp(), point={branch:P.branch,zoneId:P.zoneId,typeCode:P.typeCode,structNo:P.structNo,side:P.side,sideName:P.sideName,road:P.road,direction:P.direction,
+          rows:P.rows,cols:P.cols,lit:P.lit,regions:P.regions,overviewOnly:true,slotCount:0,status:"draft",createdBy:S.me.email,createdAt:now,updatedAt:now,lastInspection:{}};
+        await db.doc("points/"+P.id).set(point); S.points[P.id]={id:P.id,...point}; }
+      catch(e){ busy(btn,false); return toast(e.message,5000); }
+      return regSlots(app,b,P); }
     let ov; try{ ov=await takePhoto(`${P.id} ภาพรวม`,{mode:"overview"}); }catch(e){ if(e.message!=="cancel") toast(e.message,5000); return; }
     if(!checkGPS(b,ov.gps)) return;
     try{ if((await db.doc("points/"+P.id).get()).exists) return toast("รหัสจุดนี้มีอยู่แล้ว ใช้ปุ่มถ่ายภาพตรวจของจุดเดิม หรือเปลี่ยนลำดับ/ฝั่ง",5000); }catch(e){}
@@ -780,20 +813,21 @@ function regSlots(app,b,P){
     const cell=queue[qi]; if(doneAt(cell)){ qi++; return step(); }
     const idx=regions.indexOf(cell), sNo=idx+1;
     const tmp=slotsOf().concat(regions.filter(g=>!doneAt(g)).map(g=>({...g,pending:true})));
-    app.innerHTML=`<h1>ลงทะเบียน ${esc(P.id)}</h1><div class="card"><div class="stepbar"><i class="on"></i><i class="on"></i><i></i></div><div class="step">ขั้นที่ 2 จาก 3 · ป้าย ${String(sNo).padStart(2,"0")} · ${cellLabel(cell)} · ถ่ายแล้ว ${regions.length-left.length}/${regions.length}</div>
+    app.innerHTML=`<h1>ลงทะเบียน ${esc(P.id)}</h1><div class="card"><div class="stepbar"><i class="on"></i><i class="on"></i><i></i></div><div class="step">ขั้นที่ 2 จาก 3 · ${cell.view?esc(cell.view):`ป้าย ${String(sNo).padStart(2,"0")} · ${cellLabel(cell)}`} · ถ่ายแล้ว ${regions.length-left.length}/${regions.length}</div>
       <div style="margin:10px 0">${pylonHTML({...P},tmp,`${cell.row}-${cell.col}`)}</div>
-      <div class="row"><div class="grow"><label>กว้าง (ซม.)</label><input id="w" type="number" value="${esc(last.w)}"></div><div class="grow"><label>สูง (ซม.)</label><input id="h" type="number" value="${esc(last.h)}"></div></div>
-      <label>ชื่อร้าน/แบรนด์ที่เห็นบนป้าย (ไม่ทราบให้เว้นว่าง)</label><input id="tn">
-      <label class="check"><input type="checkbox" id="sl" ${last.lit?"checked":""}> ป้ายนี้มีไฟ ${LIT_NOTE}</label>
-      <div class="row" style="margin-top:10px"><button id="skip">ข้ามไปก่อน</button><button id="later">บันทึกไว้ทำต่อ</button><span class="grow"></span><button class="sun" id="shot">${IC.cam}ถ่ายภาพป้ายนี้</button></div></div>`;
+      ${cell.view?`<p>ถ่าย<b>${esc(cell.view)}</b>ของจุดนี้ ให้เห็นป้ายทั้งหมดในภาพเดียว</p><input id="w" type="hidden"><input id="h" type="hidden"><input id="tn" type="hidden">`:`<div class="row"><div class="grow"><label>กว้าง (ซม.)</label><input id="w" type="number" value="${esc(last.w)}"></div><div class="grow"><label>สูง (ซม.)</label><input id="h" type="number" value="${esc(last.h)}"></div></div>
+      <label>ชื่อร้าน/แบรนด์ที่เห็นบนป้าย (ไม่ทราบให้เว้นว่าง)</label><input id="tn">`}
+      <label class="check"><input type="checkbox" id="sl" ${(cell.view?P.lit:last.lit)?"checked":""}> ${cell.view?"จุดนี้":"ป้ายนี้"}มีไฟ ${LIT_NOTE}</label>
+      <div class="row" style="margin-top:10px"><button id="skip">ข้ามไปก่อน</button><button id="later">บันทึกไว้ทำต่อ</button><span class="grow"></span><button class="sun" id="shot">${IC.cam}${cell.view?"ถ่าย"+esc(cell.view):"ถ่ายภาพป้ายนี้"}</button></div></div>`;
     $("#skip").onclick=()=>{ qi++; step(); };
     $("#later").onclick=()=>{ toast("บันทึกแล้ว กลับมากด “ทำต่อ” ที่หน้าสาขาได้",4000); go("branch/"+b.id); };
     $("#shot").onclick=async e=>{
-      let ph; try{ ph=await takePhoto(`${P.id} ${cellLabel(cell)}`,{mode:"slot",aspect:(+$("#w").value&&+$("#h").value)?(+$("#w").value)/(+$("#h").value):null}); }catch(err){ if(err.message!=="cancel") toast(err.message); return; }
+      let ph; try{ ph=await takePhoto(`${P.id} ${cell.view||cellLabel(cell)}`,{mode:cell.view?"overview":"slot",aspect:(+$("#w").value&&+$("#h").value)?(+$("#w").value)/(+$("#h").value):null}); }catch(err){ if(err.message!=="cancel") toast(err.message); return; }
       busy(e.target,true,"กำลังอัปโหลด…");
       const sid=slotIdOf(P.id,sNo), now=FV.serverTimestamp();
       const slot={pointId:P.id, branch:b.id, zoneId:b.zoneId, typeCode:P.typeCode, no:sNo, row:cell.row, col:cell.col, rowSpan:cell.rowSpan||1, colSpan:cell.colSpan||1,
         w:$("#w").value?Number($("#w").value):null, h:$("#h").value?Number($("#h").value):null, lit:$("#sl").checked, tenant:$("#tn").value.trim(), contract:"ไม่ทราบสถานะ-รอตรวจสอบ", condition:"ยังไม่ตรวจ"};
+      if(cell.view){ slot.view=cell.view; slot.contract="-"; }
       try{ const r=await uploadSlot({...slot,id:sid},"day",ph,"register");
         Object.assign(slot,{baseFileIdDay:r.fileId,baseUrlDay:r.url,lastFileId:r.fileId,lastUrl:r.url,lastInspectedAt:now,dayMonth:mk,createdAt:now,updatedAt:now});
         const bt=db.batch(); bt.set(db.doc("slots/"+sid),slot); bt.set(db.doc("thumbs/"+sid),{zoneId:b.zoneId,branch:b.id,baseDay:ph.thumb,last:ph.thumb});
@@ -845,7 +879,7 @@ async function viewInspect(app, pid, sub){
   const dLeft=ss.filter(s=>!slotDone(s,"day",mk)), nLeft=lit.filter(s=>!slotDone(s,"night",mk)&&(slotDone(s,"day",mk)||!s.nightMonth));
   app.innerHTML=`${head}<h1>ถ่ายภาพรอบเดือน</h1><div class="muted" style="margin-top:-8px;margin-bottom:12px">${esc(pid)} · ${esc(typeOf(p).name)} ${esc(p.structNo)} · ${esc(p.sideName||"")}</div>
    <div class="card" style="${rd.open?"background:var(--sun-l);border-color:#F0D78A":"background:var(--bad-bg);border-color:#F3B4B6"}">รอบถ่ายภาพ <b>${rd.label}</b> · ${rd.open?"เปิดอยู่":rd.before?"ยังไม่ถึงรอบ ถ่ายรอบเดือนไม่ได้":"ปิดรอบแล้ว ถ่ายรอบเดือนไม่ได้"}</div>
-   <div class="card"><h2 style="margin-top:0">☀️ กลางวัน · ทุกป้าย</h2><p>ถ่ายแล้ว ${ss.length-dLeft.length}/${ss.length} ป้าย</p>
+   <div class="card"><h2 style="margin-top:0">☀️ กลางวัน · ${p.overviewOnly?"ภาพรวม "+ss.map(s=>s.view).filter(Boolean).join(" + "):"ทุกป้าย"}</h2><p>ถ่ายแล้ว ${ss.length-dLeft.length}/${ss.length} ป้าย</p>
      <div class="row"><button class="sun" data-run="day">${IC.cam}${dLeft.length===ss.length?"เริ่มถ่าย":dLeft.length?`ทำต่อ (เหลือ ${dLeft.length})`:"ถ่ายครบแล้ว · ถ่ายซ้ำทั้งหมด"}</button></div>
      <p class="muted">${st.dayStart}:00–${st.dayEnd}:00 น.</p></div>
    ${lit.length?`<div class="card"><h2 style="margin-top:0">🌙 กลางคืน · เฉพาะป้ายไฟ</h2><p>ถ่ายแล้ว ${lit.length-nLeft.length}/${lit.length} ป้าย ${nLeft.length?`<span class="chip c-bad">งานค้าง ${nLeft.length}</span>`:""}</p>
@@ -858,7 +892,7 @@ async function viewInspect(app, pid, sub){
 }
 async function runInspect(app,p,b,shift,opt={}){
   const shTH=shift==="day"?"กลางวัน":"กลางคืน", mk=monthKey(), li=p.lastInspection||{};
-  if(!opt.retake&&li[shift+"Ov"]!==mk){
+  if(!opt.retake&&!p.overviewOnly&&li[shift+"Ov"]!==mk){
     let ov; try{ ov=await takePhoto(`${p.id} ภาพรวม ${shTH}`,{mode:"overview"}); }catch(e){ if(e.message!=="cancel") toast(e.message); return; }
     if(!checkGPS(b,ov.gps)) return;
     app.innerHTML=`<div class="card">กำลังอัปโหลดภาพรวม…</div>`;
@@ -874,16 +908,16 @@ async function runInspect(app,p,b,shift,opt={}){
   const step=()=>{
     if(i>=queue.length) return finish();
     const s=queue[i];
-    app.innerHTML=`<h1>${esc(p.id)} · ${shTH}</h1><div class="card"><div class="step">ป้าย ${String(s.no).padStart(2,"0")} · ${i+1} จาก ${queue.length}</div><div class="prog" style="margin:6px 0 4px"><i style="width:${Math.round(i/queue.length*100)}%"></i></div>
+    app.innerHTML=`<h1>${esc(p.id)} · ${shTH}</h1><div class="card"><div class="step">${s.view?esc(s.view):"ป้าย "+String(s.no).padStart(2,"0")} · ${i+1} จาก ${queue.length}</div><div class="prog" style="margin:6px 0 4px"><i style="width:${Math.round(i/queue.length*100)}%"></i></div>
      <div style="margin:10px 0">${pylonHTML(p,all,`${s.row}-${s.col}`)}</div>
      <p>ร้านในทะเบียน: <b>${esc(s.tenant||"-")}</b> · สภาพล่าสุด ${chip(s.condition)}</p>
      ${s.retake?`<p class="red">ถ่ายใหม่: ${esc(s.retake.reason||"")}</p>`:""}
-     <div class="row"><button id="skip">ถ่ายไม่ได้</button><button id="later">บันทึกไว้ทำต่อ</button><span class="grow"></span><button class="sun" id="shot">${IC.cam}ถ่ายป้ายนี้</button></div></div>`;
+     <div class="row"><button id="skip">ถ่ายไม่ได้</button><button id="later">บันทึกไว้ทำต่อ</button><span class="grow"></span><button class="sun" id="shot">${IC.cam}${s.view?"ถ่าย"+esc(s.view):"ถ่ายป้ายนี้"}</button></div></div>`;
     $("#later").onclick=()=>{ toast("บันทึกแล้ว ป้ายที่ถ่ายไปแล้วไม่ต้องถ่ายซ้ำ",4000); go("branch/"+p.branch); };
     $("#skip").onclick=async()=>{ const why=prompt("เหตุผลที่ถ่ายไม่ได้ เช่น มีรถบัง, ป้ายถูกรื้อ"); if(!why) return;
       results.push({s,skip:why}); await db.collection("inspections").add({slotId:s.id,pointId:p.id,branch:s.branch,zoneId:s.zoneId,shift,month:mk,status:"review",kind:"skip",note:why,takenBy:S.me.email,takenAt:FV.serverTimestamp()}); i++; step(); };
     $("#shot").onclick=async e=>{
-      let ph; try{ ph=await takePhoto(`${s.id} ${shTH}`,{mode:shift==="night"?"night":"slot",aspect:(s.w&&s.h)?s.w/s.h:null}); }catch(err){ if(err.message!=="cancel") toast(err.message); return; }
+      let ph; try{ ph=await takePhoto(`${s.id} ${s.view||""} ${shTH}`,{mode:shift==="night"?"night":s.view?"overview":"slot",aspect:(s.w&&s.h)?s.w/s.h:null}); }catch(err){ if(err.message!=="cancel") toast(err.message); return; }
       if(!checkGPS(b,ph.gps)) return;
       busy(e.target,true,"กำลังอัปโหลด…");
       try{
@@ -903,7 +937,7 @@ async function runInspect(app,p,b,shift,opt={}){
     const allDone=shift==="night"?all.filter(s=>s.lit).every(s=>slotDone(s,"night",mk)):all.every(s=>slotDone(s,"day",mk));
     if(allDone&&!opt.retake){ await db.doc("points/"+p.id).update({["lastInspection."+shift]:mk,updatedAt:FV.serverTimestamp()}); p.lastInspection={...(p.lastInspection||{}),[shift]:mk}; }
     const litLeft=shift==="day"?all.filter(s=>s.lit&&!slotDone(s,"night",mk)).length:0;
-    app.innerHTML=`<h1>ส่งภาพ ${esc(p.id)} แล้ว</h1><div class="card"><p>${results.length} ป้าย · ส่งให้ผู้จัดการศูนย์/AM ตรวจภาพแล้ว</p>
+    app.innerHTML=`<h1>ส่งภาพ ${esc(p.id)} แล้ว</h1><div class="card"><p>${results.length} ภาพ · ส่งให้ AM ตรวจภาพแล้ว</p>
      ${results.map(r=>`<div class="row" style="border-bottom:1px solid #edf1f0;padding:6px 0"><span class="grow">ป้าย ${String(r.s.no).padStart(2,"0")} ${esc(r.s.tenant||"")}</span>${r.skip?`<span class="chip c-none">ถ่ายไม่ได้</span>`:'<span class="chip c-ok">ส่งแล้ว</span>'}</div>`).join("")}
      ${litLeft?`<div class="card" style="margin-top:10px;background:#E7ECF7;border-color:#C5D0EA">🌙 มีงานถ่ายกลางคืน ${litLeft} ป้ายไฟ ถ่ายได้ ${S.settings.nightStart}:00–${S.settings.nightEnd}:00 น.</div>`:""}
      <div class="row" style="justify-content:flex-end;margin-top:10px"><button class="pri" id="back">กลับหน้าสาขา</button></div></div>`;
@@ -1031,21 +1065,21 @@ function closeTicket(t){
   const m=modal(`<h2 style="margin-top:0">ปิดงาน ${esc(t.slotId)}</h2><p>ปัญหา: ${chip(t.category)}</p>
    <label>สภาพหลังแก้</label><select id="res"><option value="ปกติ">ปกติ (ซ่อม/เปลี่ยนแล้ว)</option><option value="ป้ายทดแทน">ขึ้นป้ายทดแทนแล้ว</option></select>
    <div id="fw" hidden><label>ชื่อป้ายทดแทน</label><input id="ftn" placeholder="True / Food Court / Pharmacy"></div>
-   <p class="muted">ถ่ายภาพ${t.shift==="night"?"ตอนกลางคืนเมื่อเปิดไฟแล้ว":""}หลังแก้ ${canReview(t)?"แล้วปิดงานได้ทันที":"แล้วส่งให้ผู้จัดการศูนย์/AM อนุมัติปิด"}</p>
+   <p class="muted">ถ่ายภาพ${t.shift==="night"?"ตอนกลางคืนเมื่อเปิดไฟแล้ว":""}หลังแก้ ${canReview(t)?"แล้วปิดงานได้ทันที":"แล้วส่งให้ AM อนุมัติปิด"}</p>
    <div class="row" style="justify-content:flex-end"><button data-c>ยกเลิก</button><button class="sun" data-go>${IC.cam}ถ่ายภาพหลังแก้</button></div>`);
   $("#res",m.el).onchange=()=>{$("#fw",m.el).hidden=$("#res",m.el).value!=="ป้ายทดแทน";};
   $("[data-c]",m.el).onclick=m.close;
   $("[data-go]",m.el).onclick=async e=>{
     const result=$("#res",m.el).value, ftn=$("#ftn",m.el).value.trim();
     if(result==="ป้ายทดแทน"&&!ftn) return toast("ใส่ชื่อป้ายทดแทน");
-    let ph; try{ ph=await takePhoto(`${t.slotId} หลังแก้`,{mode:t.shift==="night"?"night":"slot",aspect:(s.w&&s.h)?s.w/s.h:null}); }catch(err){ if(err.message!=="cancel") toast(err.message); return; }
+    let ph; try{ ph=await takePhoto(`${t.slotId} หลังแก้`,{mode:t.shift==="night"?"night":s.view?"overview":"slot",aspect:(s.w&&s.h)?s.w/s.h:null}); }catch(err){ if(err.message!=="cancel") toast(err.message); return; }
     busy(e.target,true,"กำลังอัปโหลด…");
     try{
       const r=await uploadSlot(s,t.shift||"day",ph,"after");
       const after={afterFileId:r.fileId,afterUrl:r.url,result,afterTenant:ftn||null,closedBy:S.me.email,closedAt:FV.serverTimestamp(),updatedAt:FV.serverTimestamp()};
       Object.assign(t,after,{afterThumb:ph.thumb});
       if(canReview(t)){ await finalizeClose(t,result,ftn,ph.thumb); toast("ปิดใบงานแล้ว"); }
-      else { await db.doc("tickets/"+t.id).update({...after,status:"pending_close"}); t.status="pending_close"; toast("ส่งให้ผู้จัดการศูนย์/AM อนุมัติปิดแล้ว",4000); }
+      else { await db.doc("tickets/"+t.id).update({...after,status:"pending_close"}); t.status="pending_close"; toast("ส่งให้ AM อนุมัติปิดแล้ว",4000); }
       m.close(); render();
     }catch(err){ busy(e.target,false); toast(err.message,5000); }
   };
@@ -1115,9 +1149,10 @@ function branchModal(zid,b){
 }
 const PERMS=[
   ["ดูภาพรวม ผังป้าย ใบงาน",["ทุกเขต","ทุกเขต","เขตใน RM","เขตตัวเอง","เขตตัวเอง","เขตตัวเอง"]],
-  ["ลงทะเบียนผัง ถ่ายภาพตรวจ ปิดใบงาน",["✓","—","—","ทุกสาขาในเขต","สาขาที่ได้รับ","สาขาที่ได้รับ"]],
-  ["ยืนยันผล AI และอนุมัติปิดงาน",["✓","—","—","ทุกสาขาในเขต","สาขาที่ได้รับ","—"]],
-  ["อนุมัติผัง แก้ข้อมูลช่อง สัญญา ค่าเช่า",["✓","—","—","✓","—","—"]],
+  ["ลงทะเบียนผัง ถ่ายภาพ อัปเดตความคืบหน้า",["✓","—","—","ทุกสาขาในเขต","สาขาที่ได้รับ","สาขาที่ได้รับ"]],
+  ["กรอกสัญญา Unit รายได้ ของป้าย",["✓","—","—","ทุกสาขาในเขต","สาขาที่ได้รับ","—"]],
+  ["อนุมัติ: ตรวจภาพ อนุมัติผัง อนุมัติปิดงาน",["✓","—","—","ทุกสาขาในเขต","—","—"]],
+  ["รวม/ลบป้าย ลบจุดออกจากทะเบียน",["✓","—","—","เขตตัวเอง","—","—"]],
   ["จัดการสาขา ที่เก็บภาพ นำเข้า Excel",["✓","—","—","เขตตัวเอง","—","—"]],
   ["จัดการผู้ใช้",["ทุกสิทธิ์","—","—","AM ผจก.ศูนย์ พนักงานสาขา","—","—"]],
   ["ตั้ง RM เขต AM และกติการะบบ",["✓","—","—","—","—","—"]],
@@ -1170,7 +1205,7 @@ function userModal(u){
   const m=modal(`<h2 style="margin-top:0">${u?"แก้ไขผู้ใช้":"เพิ่มผู้ใช้"}</h2>
    <label>Gmail</label><input id="ue" type="email" value="${esc(u?u.id:"")}" ${u?"disabled":""} placeholder="name@gmail.com" autocomplete="off">
    <div class="row"><div class="grow"><label>ชื่อ-นามสกุล</label><input id="un" value="${esc(u&&u.name||"")}"></div><div style="width:150px"><label>รหัสพนักงาน</label><input id="uc" value="${esc(u&&u.empCode||"")}"></div></div>
-   <label>สิทธิ์</label><div class="roles">${roles.map(r=>`<label class="ropt"><input type="radio" name="ur" value="${r}" ${(u?u.role:"branch")===r?"checked":""}><span><b>${ROLE_TH[r]}</b><small>${{super:"จัดการระบบทั้งหมด",viewer:"ดูได้ทุกเขต แก้ไม่ได้",rm:"ดูทุกเขตใน RM",am:"จัดการทุกอย่างในเขต",manager:"ถ่ายภาพ ยืนยันผล AI อนุมัติปิดงาน ของสาขาที่ได้รับ",branch:"ถ่ายภาพและปิดงาน ของสาขาที่ได้รับ"}[r]}</small></span></label>`).join("")}</div>
+   <label>สิทธิ์</label><div class="roles">${roles.map(r=>`<label class="ropt"><input type="radio" name="ur" value="${r}" ${(u?u.role:"branch")===r?"checked":""}><span><b>${ROLE_TH[r]}</b><small>${{super:"จัดการระบบทั้งหมด",viewer:"ดูได้ทุกเขต แก้ไม่ได้",rm:"ดูทุกเขตใน RM",am:"จัดการทุกอย่างในเขต",manager:"ถ่ายภาพ กรอกสัญญา Unit รายได้ ของสาขาที่ได้รับ (ไม่มีสิทธิ์อนุมัติ)",branch:"ถ่ายภาพและปิดงาน ของสาขาที่ได้รับ"}[r]}</small></span></label>`).join("")}</div>
    <div id="wrm"><label>RM</label>${selHTML("urm","เลือก RM",Object.values(S.rms).map(r=>[r.id,r.name]),u&&u.rmId||"")}</div>
    <div id="wzone">${isSuper()?`<label>เขต AM</label>${selHTML("uz","เลือกเขต",zones.map(z=>[z.id,z.name]),defZone)}`:`<p class="muted">เขต ${esc((S.zones[S.me.zoneId]||{}).name||S.me.zoneId)}</p>`}</div>
    <div id="wbr"><label>สาขาที่รับผิดชอบ</label><div id="ubl" class="row"></div></div>
