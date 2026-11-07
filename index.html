@@ -258,7 +258,7 @@ button.ghost{border-color:transparent;background:transparent;color:var(--lotus-d
 <script>
 "use strict";
 /* ================= ค่าคงที่ ================= */
-const VERSION = "1.7.0";
+const VERSION = "1.7.2";
 /* ===== ตรวจปัญหาการเริ่มระบบ: แสดงสาเหตุบนหน้าจอแทนการค้างที่ "กำลังโหลด" ===== */
 let BOOTED=false, BOOTMSG=false;
 function bootError(title, detail){
@@ -632,9 +632,9 @@ async function viewBranch(app, code){
       <div class="status-line">กลางวัน: <span class="chip ${dd>=ss.length&&ss.length?"c-ok":"c-bad"}">${dd}/${ss.length}</span>
       ${lit.length?` กลางคืน: <span class="chip ${nd>=lit.length?"c-ok":"c-bad"}">${nd}/${lit.length}</span>`:""}</div>
       ${rt.length?`<div class="card" style="background:var(--bad-bg);border-color:#F3B4B6;margin:0 0 10px;padding:10px 12px"><b class="red">ต้องถ่ายใหม่ ${rt.length} ช่อง</b><div class="muted" style="color:var(--bad)">${rt.map(s=>`${String(s.no).padStart(2,"0")}: ${esc(s.retake.reason||"")}`).join("<br>")}</div>${canShoot?`<button class="dan" data-retake="${esc(p.id)}" style="margin-top:8px">${IC.cam}ถ่ายใหม่เฉพาะช่องนี้</button>`:""}</div>`:""}
-      <div class="row">${canShoot?`<button class="sun" data-insp="${esc(p.id)}">${IC.cam}${dd>0&&dd<ss.length?`ทำต่อ (เหลือ ${ss.length-dd})`:"ถ่ายภาพรอบเดือน"}</button>`:""}<button data-ov="${esc(p.id)}">ภาพรวมล่าสุด</button>
+      <div class="row">${canShoot?`<button class="sun" data-insp="${esc(p.id)}">${IC.cam}${dd>0&&dd<ss.length?`ทำต่อ (เหลือ ${ss.length-dd})`:"ถ่ายภาพรอบเดือน"}</button>`:""}<button data-ov="${esc(p.id)}">ภาพรวม / ถ่ายใหม่</button>
       ${canEdit&&p.status==="pending"?`<button data-appr="${esc(p.id)}">อนุมัติผัง</button>`:""}${canEdit?`<button data-ep="${esc(p.id)}">แก้ไขจุด / ผัง</button><button class="dan" data-dp="${esc(p.id)}">ลบออกจากทะเบียน</button>`:""}</div>`}
-      ${draft&&canEdit?`<div class="row" style="margin-top:8px"><button class="dan" data-dp="${esc(p.id)}">ลบร่างนี้</button></div>`:""}
+      ${draft&&(canEdit||(isMgr()&&myBranch(p.branch)))?`<div class="row" style="margin-top:8px"><button class="dan" data-dp="${esc(p.id)}">ลบร่างนี้</button></div>`:""}
       <p class="muted" style="margin:8px 0 0">แตะที่ป้ายบนผังเพื่อดูหรือแก้ไขป้ายนั้น</p>
     </div></div></div>`; }).join("")}`;
   const r=$("#reg"); if(r) r.onclick=()=>go("register/"+code);
@@ -647,10 +647,51 @@ async function viewBranch(app, code){
   $$("[data-dp]",app).forEach(x=>x.onclick=()=>deletePoint(x.dataset.dp));
   $$("[data-appr]",app).forEach(x=>x.onclick=async()=>{ await db.doc("points/"+x.dataset.appr).update({status:"approved",approvedBy:S.me.email,updatedAt:FV.serverTimestamp()}); S.points[x.dataset.appr].status="approved"; toast("อนุมัติผังแล้ว"); render(); });
 }
+/* ถ่ายภาพใหม่ภายหลัง: ภาพรวมของจุด (กลางวัน/กลางคืน) และภาพของป้าย/มุมภาพรวม */
+function nightOK(){ const st=S.settings, h=bkkHour(); return !st.enforceTime||(h>=st.nightStart&&h<st.nightEnd); }
+async function retakePointOverview(p, shift){
+  if(shift==="night"&&!nightOK()) return toast(`ภาพกลางคืนถ่ายได้ ${S.settings.nightStart}:00–${S.settings.nightEnd}:00 น.`,4500), false;
+  const b=S.branches[p.branch], mk=monthKey();
+  let ph; try{ ph=await takePhoto(`${p.id} ภาพรวม${shift==="night"?"กลางคืน":"กลางวัน"} (ถ่ายใหม่)`,{mode:shift==="night"?"night":"overview"}); }catch(e){ if(e.message!=="cancel") toast(e.message); return false; }
+  if(!checkGPS(b,ph.gps)) return false;
+  toast("กำลังอัปโหลด…",2000);
+  const r=await callScript(p.zoneId,{action:"upload",image:ph.full,branch:p.branch,name:`${p.id}_overview_${shift}_retake`,month:mk});
+  const bt=db.batch(); bt.set(db.doc("thumbs/"+p.id),{zoneId:p.zoneId,branch:p.branch,[shift]:ph.thumb,[shift+"Url"]:r.url,[shift+"Month"]:mk},{merge:true});
+  bt.update(db.doc("points/"+p.id),{["lastInspection."+shift+"Ov"]:mk,updatedAt:FV.serverTimestamp()}); await bt.commit();
+  p.lastInspection={...(p.lastInspection||{}),[shift+"Ov"]:mk}; toast("บันทึกภาพรวมใหม่แล้ว"); return true;
+}
+async function retakeSlotPhoto(s, shift){
+  if(shift==="night"&&!nightOK()) return toast(`ภาพกลางคืนถ่ายได้ ${S.settings.nightStart}:00–${S.settings.nightEnd}:00 น.`,4500), false;
+  let ph; try{ ph=await takePhoto(`${s.id} ${s.view||""} ถ่ายใหม่`,{mode:shift==="night"?"night":s.view?"overview":"slot",aspect:(s.w&&s.h)?s.w/s.h:null}); }catch(err){ if(err.message!=="cancel") toast(err.message); return false; }
+  if(!checkGPS(S.branches[s.branch],ph.gps)) return false;
+  toast("กำลังอัปโหลด…",2000);
+  const r=await uploadSlot(s,shift,ph,"baseline"), now=FV.serverTimestamp(), b=db.batch(), night=shift==="night";
+  const su=night?{baseFileIdNight:r.fileId,baseUrlNight:r.url}:{baseFileIdDay:r.fileId,baseUrlDay:r.url};
+  b.update(db.doc("slots/"+s.id),{...su,lastFileId:r.fileId,lastUrl:r.url,lastInspectedAt:now,updatedAt:now});
+  b.set(db.doc("thumbs/"+s.id),{zoneId:s.zoneId,branch:s.branch,[night?"baseNight":"baseDay"]:ph.thumb,last:ph.thumb},{merge:true});
+  b.set(db.collection("inspections").doc(),{slotId:s.id,pointId:s.pointId,branch:s.branch,zoneId:s.zoneId,shift,month:monthKey(),fileId:r.fileId,url:r.url,thumb:ph.thumb,status:"review",kind:"baseline",flags:gpsFlags(S.branches[s.branch],ph.gps),gps:ph.gps||null,takenBy:S.me.email,takenAt:now});
+  await b.commit(); Object.assign(s,su,{lastFileId:r.fileId,lastUrl:r.url}); toast("บันทึกภาพใหม่แล้ว ส่งให้ AM ตรวจ"); return true;
+}
 async function overviewModal(pid){
-  const d=await db.doc("thumbs/"+pid).get(); const t=d.exists?d.data():{};
-  const m=modal(`<h2 style="margin-top:0">ภาพรวม ${esc(pid)}</h2><div class="thumbs">${["day","night"].map(k=>t[k]?`<figure><img src="${t[k]}" alt="ภาพรวม${k==="day"?"กลางวัน":"กลางคืน"}"><figcaption>${k==="day"?"กลางวัน":"กลางคืน"} ${esc(t[k+"Month"]||"")}${t[k+"Url"]?` · <a href="${esc(t[k+"Url"])}" target="_blank" rel="noopener">ภาพเต็ม</a>`:""}</figcaption></figure>`:"").join("")||'<p class="muted">ยังไม่มีภาพรวม</p>'}</div><div class="row" style="justify-content:flex-end;margin-top:12px"><button data-c>ปิด</button></div>`);
+  const p=S.points[pid], can=canShootBranch(p.branch);
+  const fig=(src,cap,url)=>`<figure><img src="${src}" alt="${esc(cap)}"><figcaption>${esc(cap)}${url?` · <a href="${esc(url)}" target="_blank" rel="noopener">ภาพเต็ม</a>`:""}</figcaption></figure>`;
+  let body="";
+  if(p.overviewOnly){
+    const vs=Object.values(S.slots).filter(s=>s.pointId===pid).sort((a,c)=>a.col-c.col);
+    const th=await Promise.all(vs.map(s=>db.doc("thumbs/"+s.id).get().then(d=>d.exists?d.data():{}).catch(()=>({}))));
+    body=vs.map((s,i)=>`<div class="card" style="padding:10px 12px"><b>${esc(s.view||"ภาพรวม")}</b>
+      <div class="thumbs" style="margin:6px 0">${th[i].last?fig(th[i].last,"ล่าสุด",s.lastUrl):""}${th[i].baseNight?fig(th[i].baseNight,"กลางคืน",s.baseUrlNight):""}${!th[i].last&&!th[i].baseNight?'<p class="muted">ยังไม่มีภาพ</p>':""}</div>
+      ${can?`<div class="row"><button class="sun" data-rs="${esc(s.id)}" data-sh="day">${IC.cam}ถ่ายใหม่ (กลางวัน)</button>${s.lit?`<button data-rs="${esc(s.id)}" data-sh="night">${IC.cam}ถ่ายใหม่ (กลางคืน)</button>`:""}</div>`:""}</div>`).join("")||'<p class="muted">ยังไม่มีภาพ</p>';
+  } else {
+    const t=await db.doc("thumbs/"+pid).get().then(d=>d.exists?d.data():{}).catch(()=>({}));
+    body=`<div class="thumbs">${["day","night"].map(k=>t[k]?fig(t[k],(k==="day"?"กลางวัน ":"กลางคืน ")+(t[k+"Month"]||""),t[k+"Url"]):"").join("")||'<p class="muted">ยังไม่มีภาพรวม</p>'}</div>
+      ${can?`<div class="row" style="margin-top:10px"><button class="sun" data-ro="day">${IC.cam}ถ่ายภาพรวมใหม่ (กลางวัน)</button>${p.lit?`<button data-ro="night">${IC.cam}ถ่ายภาพรวมใหม่ (กลางคืน)</button>`:""}</div>`:""}
+      <p class="muted">ภาพรายป้าย แตะที่ป้ายบนผัง แล้วกด “ถ่ายภาพต้นแบบใหม่”</p>`;
+  }
+  const m=modal(`<h2 style="margin-top:0">ภาพรวม ${esc(pid)}</h2>${body}<div class="row" style="justify-content:flex-end;margin-top:12px"><button data-c>ปิด</button></div>`);
   $("[data-c]",m.el).onclick=m.close;
+  $$("[data-ro]",m.el).forEach(x=>x.onclick=async()=>{ m.close(); try{ if(await retakePointOverview(p,x.dataset.ro)) overviewModal(pid); }catch(e){ toast(e.message,5000); } });
+  $$("[data-rs]",m.el).forEach(x=>x.onclick=async()=>{ m.close(); try{ if(await retakeSlotPhoto(S.slots[x.dataset.rs],x.dataset.sh)){ await loadAll(); render(); overviewModal(pid); } }catch(e){ toast(e.message,5000); } });
 }
 async function slotModal(id){
   const s=S.slots[id]; const am=canEditZone(s.zoneId), staff=canShootBranch(s.branch), det=canDetail(s);
@@ -663,7 +704,7 @@ async function slotModal(id){
   const nR=nb("r"), nD=nb("d");
   const m=modal(`<h2 style="margin-top:0">ป้าย ${String(s.no).padStart(2,"0")} <span class="muted" style="font-size:14px">${esc(id)}</span></h2><p>${chip(s.condition)} <span class="muted">ตรวจล่าสุด ${dTH(s.lastInspectedAt)}</span></p>
    <div class="thumbs">${img("baseDay","ต้นแบบกลางวัน","baseUrlDay")}${img("baseNight","ต้นแบบกลางคืน","baseUrlNight")}${img("last","ล่าสุด","lastUrl")}</div>
-   ${staff?`<button data-base style="margin-top:8px">${IC.cam}ถ่ายภาพต้นแบบใหม่ (กลางวัน)</button>`:""}
+   ${staff?`<div class="row" style="margin-top:8px"><button data-base="day">${IC.cam}ถ่ายภาพใหม่ (กลางวัน)</button>${s.lit?`<button data-base="night">${IC.cam}ถ่ายภาพใหม่ (กลางคืน)</button>`:""}</div>`:""}
    ${f("tenant","ชื่อร้าน/แบรนด์")}
    <div class="row"><div class="grow">${f("w","กว้าง (ซม.)","number")}</div><div class="grow">${f("h","สูง (ซม.)","number")}</div></div>
    <label class="check"><input type="checkbox" data-k="lit" ${s.lit?"checked":""} ${can("lit")?"":"disabled"}> ป้ายมีไฟ ${LIT_NOTE}</label>
@@ -685,14 +726,7 @@ async function slotModal(id){
         b.set(ref,t); S.tickets[ref.id]={id:ref.id,...t}; toast("เปิดใบงาน “ป้ายไม่มีสัญญา” 30 วันแล้ว",4000); }
       await b.commit(); Object.assign(S.slots[id],u); m.close(); toast("บันทึกแล้ว"); render(); }catch(err){ toast(err.message,5000); busy(e.target,false); }
   };
-  const bb=$("[data-base]",m.el); if(bb) bb.onclick=async e=>{
-    let ph; try{ ph=await takePhoto(`${id} ต้นแบบใหม่`,{mode:s.view?"overview":"slot",aspect:(s.w&&s.h)?s.w/s.h:null}); }catch(err){ if(err.message!=="cancel") toast(err.message); return; }
-    busy(e.target,true,"กำลังอัปโหลด…");
-    try{ const r=await uploadSlot(s,"day",ph,"baseline"), now=FV.serverTimestamp(), b=db.batch();
-      b.update(db.doc("slots/"+id),{baseFileIdDay:r.fileId,baseUrlDay:r.url,lastFileId:r.fileId,lastUrl:r.url,lastInspectedAt:now,updatedAt:now});
-      b.set(db.doc("thumbs/"+id),{zoneId:s.zoneId,branch:s.branch,baseDay:ph.thumb,last:ph.thumb},{merge:true});
-      b.set(db.collection("inspections").doc(),{slotId:id,pointId:s.pointId,branch:s.branch,zoneId:s.zoneId,shift:"day",month:monthKey(),fileId:r.fileId,url:r.url,thumb:ph.thumb,status:"review",kind:"baseline",flags:gpsFlags(S.branches[s.branch],ph.gps),gps:ph.gps||null,takenBy:S.me.email,takenAt:now});
-      await b.commit(); Object.assign(s,{baseFileIdDay:r.fileId,baseUrlDay:r.url}); m.close(); toast("บันทึกภาพต้นแบบใหม่แล้ว ส่งให้ตรวจ"); await loadAll(); render(); }catch(err){ busy(e.target,false); toast(err.message,5000); } };
+  $$("[data-base]",m.el).forEach(x=>x.onclick=async()=>{ m.close(); try{ if(await retakeSlotPhoto(s,x.dataset.base)){ await loadAll(); render(); } }catch(err){ toast(err.message,5000); } });
   $$("[data-mg]",m.el).forEach(x=>x.onclick=async()=>{ const o=x.dataset.mg==="r"?nR:nD; if(!await confirmBox(`รวมป้าย ${String(s.no).padStart(2,"0")} กับ ${String(o.no).padStart(2,"0")} เป็นป้ายเดียว? ข้อมูลของป้าย ${String(o.no).padStart(2,"0")} จะถูกลบ`)) return;
     const u=x.dataset.mg==="r"?{colSpan:(s.colSpan||1)+(o.colSpan||1)}:{rowSpan:(s.rowSpan||1)+(o.rowSpan||1)};
     const b=db.batch(); b.update(db.doc("slots/"+id),{...u,updatedAt:FV.serverTimestamp()}); b.delete(db.doc("slots/"+o.id)); b.delete(db.doc("thumbs/"+o.id)); await b.commit();
@@ -701,8 +735,10 @@ async function slotModal(id){
 }
 async function deletePoint(pid){
   const ss=Object.values(S.slots).filter(s=>s.pointId===pid);
-  if(!await confirmBox(`ลบจุด ${pid} และป้าย ${ss.length} ป้ายออกจากทะเบียน? ไม่ต้องถ่ายภาพจุดนี้อีก (ภาพเดิมใน Drive ยังอยู่)`)) return;
-  const ops=[[db.doc("points/"+pid),null],[db.doc("thumbs/"+pid),null]]; ss.forEach(s=>{ ops.push([db.doc("slots/"+s.id),null]); ops.push([db.doc("thumbs/"+s.id),null]); });
+  const p=S.points[pid]||{}, draft=p.status==="draft", am=canEditZone(p.zoneId);
+  if(!await confirmBox(draft?`ลบร่าง ${pid} (ถ่ายไว้แล้ว ${ss.length} ป้าย)? ภาพเดิมใน Drive ยังอยู่`:`ลบจุด ${pid} และป้าย ${ss.length} ป้ายออกจากทะเบียน? ไม่ต้องถ่ายภาพจุดนี้อีก (ภาพเดิมใน Drive ยังอยู่)`)) return;
+  const ops=[[db.doc("points/"+pid),null]]; if(am) ops.push([db.doc("thumbs/"+pid),null]);
+  ss.forEach(s=>{ ops.push([db.doc("slots/"+s.id),null]); if(am) ops.push([db.doc("thumbs/"+s.id),null]); });
   for(let i=0;i<ops.length;i+=400){ const b=db.batch(); ops.slice(i,i+400).forEach(([r])=>b.delete(r)); await b.commit(); }
   delete S.points[pid]; ss.forEach(s=>delete S.slots[s.id]); toast("ลบออกจากทะเบียนแล้ว"); render();
 }
