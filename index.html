@@ -258,7 +258,7 @@ button.ghost{border-color:transparent;background:transparent;color:var(--lotus-d
 <script>
 "use strict";
 /* ================= ค่าคงที่ ================= */
-const VERSION = "1.7.2";
+const VERSION = "1.7.3";
 /* ===== ตรวจปัญหาการเริ่มระบบ: แสดงสาเหตุบนหน้าจอแทนการค้างที่ "กำลังโหลด" ===== */
 let BOOTED=false, BOOTMSG=false;
 function bootError(title, detail){
@@ -878,7 +878,8 @@ async function viewRegister(app, code, resume){
     P.id=pointIdOf(code,P.typeCode,P.structNo,P.side);
     if(S.points[P.id]) return toast("รหัสจุดนี้มีอยู่แล้ว ใช้ปุ่มถ่ายภาพตรวจของจุดเดิม หรือเปลี่ยนลำดับ/ฝั่ง");
     if(P.overviewOnly){ const btn=$("#go"); busy(btn,true,"กำลังบันทึก…");
-      try{ if((await db.doc("points/"+P.id).get()).exists){ busy(btn,false); return toast("รหัสจุดนี้มีอยู่แล้ว",5000); }
+      try{ let exists=false; try{ exists=(await db.doc("points/"+P.id).get()).exists; }catch(e){ /* อ่านเอกสารที่ยังไม่มีอยู่ อาจถูก Rules ปฏิเสธ = ยังไม่มีจุดนี้ */ }
+        if(exists){ busy(btn,false); return toast("รหัสจุดนี้มีอยู่แล้ว",5000); }
         const now=FV.serverTimestamp(), point={branch:P.branch,zoneId:P.zoneId,typeCode:P.typeCode,structNo:P.structNo,side:P.side,sideName:P.sideName,road:P.road,direction:P.direction,
           rows:P.rows,cols:P.cols,lit:P.lit,regions:P.regions,overviewOnly:true,slotCount:0,status:"draft",createdBy:S.me.email,createdAt:now,updatedAt:now,lastInspection:{}};
         await db.doc("points/"+P.id).set(point); S.points[P.id]={id:P.id,...point}; }
