@@ -258,7 +258,7 @@ button.ghost{border-color:transparent;background:transparent;color:var(--lotus-d
 <script>
 "use strict";
 /* ================= ค่าคงที่ ================= */
-const VERSION = "1.7.3";
+const VERSION = "1.7.4";
 /* ===== ตรวจปัญหาการเริ่มระบบ: แสดงสาเหตุบนหน้าจอแทนการค้างที่ "กำลังโหลด" ===== */
 let BOOTED=false, BOOTMSG=false;
 function bootError(title, detail){
@@ -610,7 +610,7 @@ function pylonHTML(p, slots, curKey){
   const head=(t.code==="PY"||t.code==="TT")?`<div class="sg-head"><span class="sg-logo">Lotus<em>'s</em></span></div><div class="sg-name">${esc(br.name||p.branch||"")}</div>`:"";
   const foot=t.code==="PY"?'<div class="sg-legs"><i></i><i></i></div>':t.code==="TT"?'<div class="sg-base"></div>':"";
   return `<div class="sign ${head?"":"plain"} ${t.code==="TT"?"tt":""}">${head}<div class="sg-body"><div class="pgrid" style="grid-template-columns:repeat(${cols},minmax(${t.code==="TT"?58:74}px,1fr))">${cells}</div></div>${foot}
-    <div class="sg-cap">${esc(t.name)} ${esc(p.structNo)}${p.side&&p.side!=="-"?" · ฝั่ง "+esc(p.side):""}${p.lit?" · มีไฟ":""}</div></div>`;
+    <div class="sg-cap">${esc(t.name)} ${esc(p.structNo)}${p.side&&p.side!=="-"?" · ฝั่ง "+esc(p.side):""}${(()=>{ const real=slots.filter(s=>!s.pending), n=real.filter(s=>s.lit).length; return real.length?(n?` · ป้ายไฟ ${n}/${real.length}`:""):(p.lit?" · มีไฟ":""); })()}</div></div>`;
 }
 async function viewBranch(app, code){
   const b=S.branches[code]; if(!b){ app.innerHTML=`<div class="card">ไม่พบสาขา ${esc(code)}</div>`; return; }
@@ -749,11 +749,19 @@ function pointModal(pid){
    ${T.road?`<label>ถนน</label><input data-k="road" value="${esc(p.road||"")}">`:""}
    ${T.dir?`<label>ทิศทางจราจร</label><select data-k="direction">${["","ขาเข้า","ขาออก"].map(o=>`<option ${p.direction===o?"selected":""} value="${o}">${o||"-"}</option>`).join("")}</select>`:""}
    <label class="check"><input type="checkbox" data-k="lit" ${p.lit?"checked":""}> จุดนี้มีป้ายไฟ ${LIT_NOTE}</label>
+   ${ss.length?`<div class="card" style="padding:10px 12px;margin:6px 0"><b>ป้ายไฟในจุดนี้: ${ss.filter(s=>s.lit).length}/${ss.length} ป้าย</b>
+     <p class="muted" style="margin:4px 0 8px">นับงานถ่ายกลางคืนจากป้ายที่ติ๊ก “มีไฟ” ทีละป้าย ตั้งพร้อมกันทั้งจุดได้ที่นี่ หรือแตะที่ป้ายบนผังเพื่อแก้ทีละป้าย</p>
+     <div class="row"><button data-alllit="1">ทุกป้ายมีไฟ</button><button data-alllit="0">ทุกป้ายไม่มีไฟ</button></div></div>`:""}
    ${p.overviewOnly?`<p class="muted">จุดนี้ถ่ายแค่ภาพรวม ไม่มีผังช่องป้าย</p>`:`<div id="ple" style="margin-top:6px"></div>
    <p class="muted">รวม/แยก/เพิ่ม/ลบป้ายได้ เมื่อเดือนนี้มีการเปลี่ยนช่องป้าย ป้ายที่อยู่ตำแหน่งเดิมจะเก็บประวัติไว้ ป้ายที่เพิ่มใหม่ต้องถ่ายภาพในรอบถัดไป</p>`}
    <div class="row" style="margin-top:8px"><span class="grow"></span><button data-c>ยกเลิก</button><button class="pri" data-s>บันทึก</button></div>`);
   const ed=p.overviewOnly?null:layoutEditor($("#ple",m.el),{rows:p.rows,cols:p.cols,regions:ss.map(s=>({row:s.row,col:s.col,rowSpan:s.rowSpan,colSpan:s.colSpan}))});
   $("[data-c]",m.el).onclick=m.close;
+  $$("[data-alllit]",m.el).forEach(x=>x.onclick=async()=>{ const on=x.dataset.alllit==="1";
+    if(!await confirmBox(`ตั้งทั้ง ${ss.length} ป้ายในจุดนี้เป็น “${on?"มีไฟ":"ไม่มีไฟ"}”?`)) return;
+    try{ const now=FV.serverTimestamp(); for(let i=0;i<ss.length;i+=400){ const b=db.batch(); ss.slice(i,i+400).forEach(s=>b.update(db.doc("slots/"+s.id),{lit:on,updatedAt:now})); await b.commit(); }
+      await db.doc("points/"+pid).update({lit:on,updatedAt:now}); ss.forEach(s=>s.lit=on); p.lit=on; m.close(); toast(`ตั้งค่าแล้ว ป้ายไฟ ${on?ss.length:0}/${ss.length}`); render(); }
+    catch(err){ toast(err.message,5000); } });
   $("[data-s]",m.el).onclick=async e=>{
     const u={}; $$("[data-k]",m.el).forEach(i=>u[i.dataset.k]=i.type==="checkbox"?i.checked:i.value.trim());
     try{
@@ -917,7 +925,7 @@ function regSlots(app,b,P,startAt){
     if(i>=regions.length) return regSave(app,b,P);
     const cell=regions[i], ex=slotAt(cell), sNo=ex?ex.no:nextNo(i), doneN=regions.filter(slotAt).length;
     const tmp=Object.values(S.slots).filter(s=>s.pointId===P.id).concat(regions.filter(g=>!slotAt(g)).map(g=>({...g,pending:true})));
-    const v=ex||last;
+    const v=ex||{...last,lit:P.lit};
     app.innerHTML=`<div class="row"><h1 class="grow">ลงทะเบียน ${esc(P.id)}</h1><button class="ghost" id="edd">แก้ไขข้อมูลจุด/ผัง</button></div><div class="card"><div class="stepbar"><i class="on"></i><i class="on"></i><i></i></div>
       <div class="step">ขั้นที่ 2 จาก 3 · ${cell.view?esc(cell.view):`ป้าย ${String(sNo).padStart(2,"0")} · ${cellLabel(cell)}`} · ถ่ายแล้ว ${doneN}/${regions.length} ${ex?'<span class="chip c-ok">ถ่ายแล้ว</span>':""}</div>
       <div style="margin:10px 0">${pylonHTML({...P},tmp,`${cell.row}-${cell.col}`)}</div>
